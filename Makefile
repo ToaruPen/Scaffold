@@ -13,7 +13,7 @@ format-check:
 	ruff format --check framework tests
 
 typecheck:
-	mypy --config-file pyproject.toml framework/scripts/gates tests/framework
+	mypy --config-file pyproject.toml
 
 schema-check:
 	check-jsonschema --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json

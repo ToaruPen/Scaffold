@@ -44,7 +44,7 @@ def _build_drift_input(
     declared_targets: list[str],
     changed_paths: list[str],
 ) -> dict[str, object]:
-    actual_changes = changed_paths if changed_paths else ["."]
+    actual_changes = changed_paths if changed_paths else []
     declared = declared_targets if declared_targets else ["__missing_declared_targets__"]
     return {
         "request_id": context.request_id,

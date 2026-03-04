@@ -32,7 +32,64 @@ def _require_entries(adr_index: dict[str, Any]) -> list[dict[str, Any]]:
     return values
 
 
-def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+def _resolve_adr_file_path(repo_root: Path, file_path: str) -> Path:
+    path = Path(file_path)
+    if path.is_absolute():
+        return path
+    return repo_root / path
+
+
+def _extract_markdown_sections(text: str) -> dict[str, str]:
+    sections: dict[str, str] = {}
+    current: str | None = None
+    buffer: list[str] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if line.startswith("## "):
+            if current is not None:
+                sections[current] = "\n".join(buffer)
+            current = line[3:].strip().lower()
+            buffer = []
+            continue
+        if current is not None:
+            buffer.append(raw_line)
+    if current is not None:
+        sections[current] = "\n".join(buffer)
+    return sections
+
+
+def _first_section_value(text: str) -> str | None:
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("-"):
+            line = line[1:].strip()
+        if line:
+            return line
+    return None
+
+
+def _load_adr_metadata(path: Path) -> dict[str, str] | None:
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+    sections = _extract_markdown_sections(content)
+    adr_id = _first_section_value(sections.get("adr id", ""))
+    title = _first_section_value(sections.get("title", ""))
+    status = _first_section_value(sections.get("status", ""))
+    if adr_id is None or title is None or status is None:
+        return None
+    return {
+        "adr_id": adr_id,
+        "title": title,
+        "status": status.lower(),
+    }
+
+
+def _build_result(payload: dict[str, Any], repo_root: Path) -> tuple[dict[str, Any], bool]:
     request_id = require_text(payload, "request_id")
     scope_id = require_text(payload, "scope_id")
     run_id = require_text(payload, "run_id")
@@ -54,6 +111,22 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         if adr_id in seen:
             mismatch_reasons.add("duplicate_adr_id")
         seen.add(adr_id)
+
+        resolved_file_path = _resolve_adr_file_path(repo_root, file_path)
+        if not resolved_file_path.is_file():
+            mismatch_reasons.add("missing_adr_file")
+        else:
+            metadata = _load_adr_metadata(resolved_file_path)
+            if metadata is None:
+                mismatch_reasons.add("adr_metadata_missing")
+            else:
+                normalized_status = status.lower()
+                if (
+                    metadata["adr_id"] != adr_id
+                    or metadata["title"] != title
+                    or metadata["status"] != normalized_status
+                ):
+                    mismatch_reasons.add("adr_metadata_mismatch")
 
         normalized_entries.append(
             {
@@ -87,7 +160,7 @@ def main() -> int:
 
     try:
         payload = read_json(Path(args.input))
-        result, passed = _build_result(payload)
+        result, passed = _build_result(payload, Path.cwd())
         exit_code = 0 if passed else 2
     except ValueError as exc:
         result = {

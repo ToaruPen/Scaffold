@@ -122,7 +122,7 @@ Distributable script layer for consumer repositories.
   - Exit code: `0` (valid), `2` (invalid input/mismatch).
 
 - `framework/scripts/gates/validate_adr_index.py`
-  - Validates ADR index entry structure and duplicate `adr_id` detection.
+  - Validates ADR index entry structure, duplicate `adr_id`, indexed ADR file existence, and ADR body metadata consistency.
   - Required top-level inputs: `request_id`, `scope_id`, `run_id`, `artifact_path`, `adr_index`.
   - Exit code: `0` (valid), `2` (invalid input/mismatch).
 

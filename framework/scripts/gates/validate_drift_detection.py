@@ -29,13 +29,26 @@ def _matches_target(target: str, changed_path: str) -> bool:
     return bool(normalized_path.startswith(f"{target_dir}/"))
 
 
+def _require_actual_changes_allow_empty(payload: dict[str, Any]) -> list[str]:
+    raw = payload.get("actual_changes")
+    if not isinstance(raw, list):
+        raise ValueError("missing or invalid list: actual_changes")
+
+    values: list[str] = []
+    for item in raw:
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError("invalid string element: actual_changes")
+        values.append(item.strip())
+    return values
+
+
 def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     request_id = require_text(payload, "request_id")
     scope_id = require_text(payload, "scope_id")
     run_id = require_text(payload, "run_id")
     artifact_path = require_text(payload, "artifact_path")
     declared_targets = require_list_of_texts(payload, "declared_targets")
-    actual_changes = require_list_of_texts(payload, "actual_changes")
+    actual_changes = _require_actual_changes_allow_empty(payload)
 
     undeclared_additions: list[str] = []
     for changed_path in actual_changes:

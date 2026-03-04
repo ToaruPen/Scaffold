@@ -76,6 +76,23 @@ class ValidateDriftDetectionTests(unittest.TestCase):
         self.assertEqual(body["status"], "pass")
         self.assertIn("src/billing/", body["unused_declarations"])
 
+    def test_passes_when_actual_changes_is_empty(self) -> None:
+        payload = {
+            "request_id": "req-drift-4",
+            "scope_id": "issue-15",
+            "run_id": "run-4",
+            "artifact_path": "artifacts/drift/issue-15.json",
+            "declared_targets": ["src/auth/"],
+            "actual_changes": [],
+        }
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 0)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["status"], "pass")
+        self.assertEqual(body["undeclared_additions"], [])
+        self.assertEqual(body["actual_changes"], [])
+        self.assertIn("src/auth/", body["unused_declarations"])
+
 
 if __name__ == "__main__":
     unittest.main()

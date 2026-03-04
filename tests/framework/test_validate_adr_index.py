@@ -198,6 +198,34 @@ class ValidateAdrIndexTests(unittest.TestCase):
             body = json.loads(result.stdout)
             self.assertIn("adr_metadata_mismatch", body["mismatch_reasons"])
 
+    def test_fails_when_adr_metadata_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as repo_tmp:
+            repo_root = Path(repo_tmp)
+            invalid_adr_path = repo_root / "docs/adr/ADR-011.md"
+            invalid_adr_path.parent.mkdir(parents=True, exist_ok=True)
+            invalid_adr_path.write_text("# ADR\n\nmetadata is missing\n", encoding="utf-8")
+
+            payload = {
+                "request_id": "req-adr-6",
+                "scope_id": "issue-14",
+                "run_id": "run-6",
+                "artifact_path": "docs/adr/index.json",
+                "adr_index": {
+                    "entries": [
+                        {
+                            "adr_id": "ADR-011",
+                            "title": "Missing Metadata",
+                            "status": "accepted",
+                            "file_path": "docs/adr/ADR-011.md",
+                        }
+                    ]
+                },
+            }
+            result = self._run(payload, cwd=repo_root)
+            self.assertEqual(result.returncode, 2)
+            body = json.loads(result.stdout)
+            self.assertIn("adr_metadata_missing", body["mismatch_reasons"])
+
     def test_fails_with_invalid_input(self) -> None:
         payload = {
             "request_id": "req-adr-3",

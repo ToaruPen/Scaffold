@@ -1,13 +1,24 @@
 # ADR Template
 
-## Decision ID
+## ADR ID
+- ADR-XXX
+
+## Title
+
+## Status
+- Proposed | Accepted | Superseded | Deprecated
 
 ## Context
 
 ## Decision
 
-## Alternatives
-
 ## Consequences
+### Positive
+-
 
-## Verification
+### Negative
+-
+
+## References
+- Epic:
+- Issue:

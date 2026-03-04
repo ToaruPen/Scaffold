@@ -39,10 +39,16 @@ ignore = [
 [tool.ruff.lint.mccabe]
 max-complexity = 10
 
+[tool.ruff.lint.per-file-ignores]
+"framework/scripts/gates/validate_*.py" = ["E402"]
+"framework/scripts/ci/run_*_review.py" = ["E402"]
+
 [tool.mypy]
 python_version = "3.11"
-files = ["framework/scripts/gates", "tests/framework"]
+files = ["framework/scripts/gates", "framework/scripts/lib", "tests/framework"]
 strict = true
+namespace_packages = true
+explicit_package_bases = true
 warn_unused_configs = true
 disallow_any_generics = true
 show_error_codes = true

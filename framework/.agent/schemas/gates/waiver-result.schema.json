@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scaffold.local/schemas/gates/waiver-result.schema.json",
+  "title": "WaiverResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "scope_id",
+    "run_id",
+    "status",
+    "artifact_path",
+    "gate_id",
+    "reason",
+    "approved_by",
+    "approved_at",
+    "mismatch_reasons"
+  ],
+  "properties": {
+    "request_id": {"type": "string", "minLength": 1},
+    "scope_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["pass", "fail"]},
+    "artifact_path": {"type": "string", "minLength": 1},
+    "gate_id": {"type": "string", "minLength": 1},
+    "reason": {"type": "string", "minLength": 1},
+    "approved_by": {"type": "string", "minLength": 1},
+    "approved_at": {"type": "string", "minLength": 1},
+    "expiry": {"type": "string", "minLength": 1},
+    "scope_restriction": {"type": "string", "minLength": 1},
+    "mismatch_reasons": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "errors": {
+      "type": "array",
+      "items": {"$ref": "../common/adapter-error.schema.json"}
+    }
+  }
+}

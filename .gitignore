@@ -19,6 +19,7 @@ coverage/
 # Local runtime state (do not commit)
 .scaffold-state/
 .scaffold/review_results/
+.sisyphus/
 
 # Environment
 .env

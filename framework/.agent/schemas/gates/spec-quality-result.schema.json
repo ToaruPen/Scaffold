@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scaffold.local/schemas/gates/spec-quality-result.schema.json",
+  "title": "SpecQualityResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "scope_id",
+    "run_id",
+    "status",
+    "artifact_path",
+    "spec_ref",
+    "has_acceptance_criteria",
+    "has_out_of_scope",
+    "acceptance_criteria_count",
+    "mismatch_reasons"
+  ],
+  "properties": {
+    "request_id": {"type": "string", "minLength": 1},
+    "scope_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["pass", "fail"]},
+    "artifact_path": {"type": "string", "minLength": 1},
+    "spec_ref": {"type": "string", "minLength": 1},
+    "has_acceptance_criteria": {"type": "boolean"},
+    "has_out_of_scope": {"type": "boolean"},
+    "acceptance_criteria_count": {"type": "integer", "minimum": 0},
+    "mismatch_reasons": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "errors": {
+      "type": "array",
+      "items": {"$ref": "../common/adapter-error.schema.json"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "has_acceptance_criteria": {"const": false}
+        }
+      },
+      "then": {
+        "properties": {
+          "acceptance_criteria_count": {"const": 0}
+        }
+      },
+      "else": {
+        "properties": {
+          "acceptance_criteria_count": {"minimum": 1}
+        }
+      }
+    }
+  ]
+}

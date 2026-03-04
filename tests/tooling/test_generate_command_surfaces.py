@@ -178,6 +178,116 @@ command_tiers:
             self.assertEqual(exit_code, 2)
             self.assertFalse((output_root / "claude.commands.json").exists())
 
+    def test_fails_when_command_tier_key_is_non_string(self) -> None:
+        manifest_text = """\
+must_command_contracts:
+  /research:
+    requires: [research-before-spec]
+command_tiers:
+  /research: core
+  123: core
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest_path = tmp_path / "manifest.yaml"
+            output_root = tmp_path / "out"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            argv = [
+                "generate_command_surfaces.py",
+                "--manifest",
+                str(manifest_path),
+                "--output-root",
+                str(output_root),
+                "--agent",
+                "claude",
+            ]
+
+            with patch.object(sys, "argv", argv):
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    exit_code = self.script.main()
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("command_tiers contains invalid entries", stderr.getvalue())
+            self.assertFalse((output_root / "claude.commands.json").exists())
+
+    def test_fails_when_must_command_key_is_non_string(self) -> None:
+        manifest_text = """\
+must_command_contracts:
+  /research:
+    requires: [research-before-spec]
+  123:
+    requires: [some-contract]
+command_tiers:
+  /research: core
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest_path = tmp_path / "manifest.yaml"
+            output_root = tmp_path / "out"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            argv = [
+                "generate_command_surfaces.py",
+                "--manifest",
+                str(manifest_path),
+                "--output-root",
+                str(output_root),
+                "--agent",
+                "claude",
+            ]
+
+            with patch.object(sys, "argv", argv):
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    exit_code = self.script.main()
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn(
+                "must_command_contracts missing tier classification: 123", stderr.getvalue()
+            )
+            self.assertFalse((output_root / "claude.commands.json").exists())
+
+    def test_fails_with_exit_two_when_output_directory_creation_fails(self) -> None:
+        manifest_text = """\
+must_command_contracts:
+  /research:
+    requires: [research-before-spec]
+command_tiers:
+  /research: core
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest_path = tmp_path / "manifest.yaml"
+            output_root = tmp_path / "out"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            argv = [
+                "generate_command_surfaces.py",
+                "--manifest",
+                str(manifest_path),
+                "--output-root",
+                str(output_root),
+                "--agent",
+                "claude",
+            ]
+
+            with (
+                patch.object(self.script.Path, "mkdir", side_effect=OSError("permission denied")),
+                patch.object(sys, "argv", argv),
+            ):
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    exit_code = self.script.main()
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("permission denied", stderr.getvalue())
+            self.assertFalse((output_root / "claude.commands.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

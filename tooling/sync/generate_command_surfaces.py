@@ -63,9 +63,10 @@ def _load_manifest(manifest_path: Path) -> dict[str, Any]:
 def _extract_tiers(manifest: dict[str, Any]) -> tuple[list[str], list[str]]:
     must_command_contracts = _require_mapping(manifest, "must_command_contracts")
     command_tiers = _require_mapping(manifest, "command_tiers")
+    command_keys_str = {str(command) for command in command_tiers}
 
     invalid_tiers = sorted(
-        command
+        str(command)
         for command, tier in command_tiers.items()
         if not isinstance(command, str) or tier not in _ALLOWED_TIERS
     )
@@ -73,7 +74,9 @@ def _extract_tiers(manifest: dict[str, Any]) -> tuple[list[str], list[str]]:
         details = ", ".join(invalid_tiers)
         raise ValueError(f"command_tiers contains invalid entries: {details}")
 
-    missing = sorted(command for command in must_command_contracts if command not in command_tiers)
+    missing = sorted(
+        str(command) for command in must_command_contracts if str(command) not in command_keys_str
+    )
     if missing:
         details = ", ".join(missing)
         raise ValueError(f"must_command_contracts missing tier classification: {details}")
@@ -139,7 +142,7 @@ def main() -> int:
             )
             print(output_path)
         return 0
-    except ValueError as exc:
+    except (ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 

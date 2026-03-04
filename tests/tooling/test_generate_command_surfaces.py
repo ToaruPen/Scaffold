@@ -324,21 +324,19 @@ command_tiers:
             ]
 
             old_cwd = Path.cwd()
+            self.addCleanup(os.chdir, old_cwd)
             os.chdir(tmp_path)
-            try:
-                with patch.object(sys, "argv", default_argv):
-                    stdout = io.StringIO()
-                    stderr = io.StringIO()
-                    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                        default_exit_code = self.script.main()
+            with patch.object(sys, "argv", default_argv):
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    default_exit_code = self.script.main()
 
-                with patch.object(sys, "argv", conditional_argv):
-                    stdout = io.StringIO()
-                    stderr = io.StringIO()
-                    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                        conditional_exit_code = self.script.main()
-            finally:
-                os.chdir(old_cwd)
+            with patch.object(sys, "argv", conditional_argv):
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    conditional_exit_code = self.script.main()
 
             self.assertEqual(default_exit_code, 0)
             self.assertEqual(conditional_exit_code, 0)

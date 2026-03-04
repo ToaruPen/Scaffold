@@ -1,74 +1,43 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
-import json
+import sys
 from pathlib import Path
 from typing import Any
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-def _error(code: str, message: str) -> dict[str, Any]:
-    return {
-        "code": code,
-        "message": message,
-        "retryable": False,
-        "provider": "review_engine",
-    }
-
-
-def _read_json(path: Path) -> dict[str, Any]:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        raise ValueError(f"failed to read input JSON: {exc}") from exc
-    if not isinstance(data, dict):
-        raise ValueError("input must be a JSON object")
-    return data
-
-
-def _require_text(obj: dict[str, Any], key: str, parent: str = "") -> str:
-    raw = obj.get(key)
-    prefix = f"{parent}." if parent else ""
-    if not isinstance(raw, str) or not raw.strip():
-        raise ValueError(f"missing or invalid string: {prefix}{key}")
-    return raw.strip()
-
-
-def _optional_text(obj: dict[str, Any], key: str, parent: str = "") -> str | None:
-    raw = obj.get(key)
-    prefix = f"{parent}." if parent else ""
-    if raw is None:
-        return None
-    if not isinstance(raw, str) or not raw.strip():
-        raise ValueError(f"invalid string: {prefix}{key}")
-    return raw.strip()
-
-
-def _require_object(obj: dict[str, Any], key: str) -> dict[str, Any]:
-    raw = obj.get(key)
-    if not isinstance(raw, dict):
-        raise ValueError(f"missing or invalid object: {key}")
-    return raw
+from framework.scripts.lib.gate_helpers import (
+    error_dict,
+    optional_text,
+    parse_gate_args,
+    read_json,
+    require_object,
+    require_text,
+    write_result,
+)
 
 
 def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
-    request_id = _require_text(payload, "request_id")
-    scope_id = _require_text(payload, "scope_id")
-    run_id = _require_text(payload, "run_id")
-    artifact_path = _require_text(payload, "artifact_path")
+    request_id = require_text(payload, "request_id")
+    scope_id = require_text(payload, "scope_id")
+    run_id = require_text(payload, "run_id")
+    artifact_path = require_text(payload, "artifact_path")
 
-    expected = _require_object(payload, "expected")
-    review = _require_object(payload, "review")
-    evidence = _require_object(review, "evidence")
+    expected = require_object(payload, "expected")
+    review = require_object(payload, "review")
+    evidence = require_object(review, "evidence", "review")
 
-    expected_head = _require_text(expected, "head_sha", "expected")
-    expected_base = _optional_text(expected, "base_sha", "expected")
+    expected_head = require_text(expected, "head_sha", "expected")
+    expected_base = optional_text(expected, "base_sha", "expected")
 
-    review_status = _require_text(review, "status", "review").lower()
-    review_summary = _require_text(review, "summary", "review")
-    evidence_head = _require_text(evidence, "head_sha", "review.evidence")
-    evidence_base = _optional_text(evidence, "base_sha", "review.evidence")
-    evidence_artifact = _require_text(evidence, "artifact_path", "review.evidence")
+    review_status = require_text(review, "status", "review").lower()
+    review_summary = require_text(review, "summary", "review")
+    evidence_head = require_text(evidence, "head_sha", "review.evidence")
+    evidence_base = optional_text(evidence, "base_sha", "review.evidence")
+    evidence_artifact = require_text(evidence, "artifact_path", "review.evidence")
 
     mismatch_reasons: list[str] = []
     if review_status != "approved":
@@ -99,20 +68,18 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     if evidence_base is not None:
         result["base_sha"] = evidence_base
     if not passed:
-        result["errors"] = [_error("E_PROVIDER_FAILURE", "final-review evidence check failed")]
+        result["errors"] = [
+            error_dict("E_PROVIDER_FAILURE", "final-review evidence check failed", "review_engine")
+        ]
     return result, passed
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate final-review evidence contract")
-    parser.add_argument("--input", required=True, help="Path to input JSON")
-    parser.add_argument("--output", help="Path to write result JSON")
-    args = parser.parse_args()
-
+    args = parse_gate_args("Validate final-review evidence contract")
     output_path = Path(args.output) if args.output else None
 
     try:
-        payload = _read_json(Path(args.input))
+        payload = read_json(Path(args.input))
         result, passed = _build_result(payload)
         exit_code = 0 if passed else 2
     except ValueError as exc:
@@ -127,15 +94,11 @@ def main() -> int:
             "summary": "invalid_input",
             "head_sha": "unknown",
             "mismatch_reasons": ["invalid_input"],
-            "errors": [_error("E_INPUT_INVALID", str(exc))],
+            "errors": [error_dict("E_INPUT_INVALID", str(exc), "review_engine")],
         }
         exit_code = 2
 
-    output_text = json.dumps(result, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
-    if output_path:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(output_text, encoding="utf-8")
-    print(output_text, end="")
+    write_result(result, output_path)
     return exit_code
 
 

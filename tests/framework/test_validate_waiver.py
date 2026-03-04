@@ -66,6 +66,26 @@ class ValidateWaiverTests(unittest.TestCase):
         body = json.loads(result.stdout)
         self.assertEqual(body["errors"][0]["code"], "E_INPUT_INVALID")
 
+    def test_fails_when_scope_restriction_mismatches(self) -> None:
+        payload = {
+            "request_id": "req-w-3",
+            "scope_id": "issue-16",
+            "run_id": "run-3",
+            "artifact_path": "artifacts/waivers/issue-16.json",
+            "waiver": {
+                "gate_id": "drift-detection",
+                "reason": "temporary override",
+                "approved_by": "repo-owner",
+                "approved_at": "2026-03-04T00:00:00Z",
+                "scope_restriction": "scope:issue-99",
+            },
+        }
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["status"], "fail")
+        self.assertIn("scope_restriction_mismatch", body["mismatch_reasons"])
+
 
 if __name__ == "__main__":
     unittest.main()

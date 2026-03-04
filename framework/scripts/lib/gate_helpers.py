@@ -52,6 +52,22 @@ def require_object(obj: dict[str, Any], key: str, parent: str = "") -> dict[str,
     return raw
 
 
+def require_bool(obj: dict[str, Any], key: str, parent: str = "") -> bool:
+    raw = obj.get(key)
+    prefix = f"{parent}." if parent else ""
+    if not isinstance(raw, bool):
+        raise ValueError(f"missing or invalid boolean: {prefix}{key}")
+    return raw
+
+
+def require_int(obj: dict[str, Any], key: str, parent: str = "") -> int:
+    raw = obj.get(key)
+    prefix = f"{parent}." if parent else ""
+    if not isinstance(raw, int) or isinstance(raw, bool):
+        raise ValueError(f"missing or invalid integer: {prefix}{key}")
+    return raw
+
+
 def require_list_of_texts(obj: dict[str, Any], key: str, parent: str = "") -> list[str]:
     raw = obj.get(key)
     prefix = f"{parent}." if parent else ""

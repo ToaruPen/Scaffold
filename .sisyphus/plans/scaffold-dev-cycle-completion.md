@@ -116,7 +116,7 @@ Evidence saved to `.sisyphus/evidence/task-{N}-{scenario-slug}.{ext}`.
 
 ### Parallel Execution Waves
 
-```
+```text
 Wave 1 (Foundation — shared lib + environment):
 ├── T1: Gate helper共有ライブラリ抽出 [deep]
 ├── T2: Git remote設定 + 初回push [quick]
@@ -605,7 +605,7 @@ Max Concurrent: 5 (Wave 3)
 
   **What to do**:
   - validate_test_review.py, validate_review_cycle.py, validate_final_review.py の3つを更新
-  - 各validatorの先頭50行の共通関数群 (_error, _read_json, _require_text, _optional_text, _require_object) を削除
+  - 各validatorの先頭50行の共通関数群（`_error`, `_read_json`, `_require_text`, `_optional_text`, `_require_object`）を削除
   - 代わりに各validator先頭に sys.path bootstrap を追加し、gate_helpers からimport:
     ```python
     import sys
@@ -637,7 +637,7 @@ Max Concurrent: 5 (Wave 3)
 
   **References**:
   - `framework/scripts/gates/validate_test_review.py` — 移行対象 (143行)。先頭50行が共通関数、後半がビジネスロジック
-  - `framework/scripts/gates/validate_review_cycle.py` — 移行対象 (143行)。test_reviewとの差異: _error()のprovider値
+  - `framework/scripts/gates/validate_review_cycle.py` — 移行対象 (143行)。test_reviewとの差異: `_error()` のprovider値
   - `framework/scripts/gates/validate_final_review.py` — 移行対象 (143行)。status判定ロジックに非対称性あり（意図的）
   - `framework/scripts/lib/gate_helpers.py` — T1で作成した共通ヘルパー
   - `tests/framework/test_validate_test_review.py` — 既存テスト。移行後も全テストパス必須

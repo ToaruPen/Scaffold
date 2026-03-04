@@ -27,7 +27,7 @@ Distributable script layer for consumer repositories.
 
 - `framework/scripts/ci/run_review_engine.py`
   - Runs `codex` or `claude` in read-only review mode.
-  - Creates artifacts under `.scaffold/review_results/<scope_id>/<run_id>/<engine>/`.
+  - Creates artifacts under `.scaffold/review_results/<scope_id>/<run_id>/review-cycle/`.
   - Separates final outputs from intermediate files:
     - `outputs/review.json`
     - `outputs/review-cycle.result.json`
@@ -50,12 +50,12 @@ Distributable script layer for consumer repositories.
 
 - `framework/scripts/ci/run_test_review.py`
   - Runs stage-specific `test-review` gate validation plus `review-evidence-link`.
-  - Writes artifacts under `.scaffold/review_results/<scope_id>/<run_id>/<engine>/test-review/`.
+  - Writes artifacts under `.scaffold/review_results/<scope_id>/<run_id>/test-review/`.
 
 - `framework/scripts/ci/run_final_review.py`
   - Runs stage-specific `final-review` gate validation plus `review-evidence-link`, `drift-detection`, and `adr-index-consistency`.
   - Publishes gate result entrypoints for `final_review_gate_result`, `review_evidence_gate_result`, `drift_detection_gate_result`, and `adr_index_gate_result` in `outputs/index.json` and `outputs/run-metadata.json`.
-  - Writes artifacts under `.scaffold/review_results/<scope_id>/<run_id>/<engine>/final-review/`.
+  - Writes artifacts under `.scaffold/review_results/<scope_id>/<run_id>/final-review/`.
 
 ## Implemented validators
 

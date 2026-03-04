@@ -47,6 +47,15 @@ class GateHelpersTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing or invalid object"):
             gate_helpers.require_object(payload, "missing")
 
+    def test_require_bool_and_int(self) -> None:
+        payload = {"flag": True, "count": 2}
+        self.assertEqual(gate_helpers.require_bool(payload, "flag"), True)
+        self.assertEqual(gate_helpers.require_int(payload, "count"), 2)
+        with self.assertRaisesRegex(ValueError, "missing or invalid boolean"):
+            gate_helpers.require_bool(payload, "count")
+        with self.assertRaisesRegex(ValueError, "missing or invalid integer"):
+            gate_helpers.require_int(payload, "flag")
+
     def test_require_list_of_texts(self) -> None:
         payload = {"values": ["a", " b ", "c"]}
         self.assertEqual(gate_helpers.require_list_of_texts(payload, "values"), ["a", "b", "c"])

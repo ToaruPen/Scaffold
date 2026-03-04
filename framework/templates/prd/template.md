@@ -17,6 +17,7 @@
 - G2:
 
 ## Functional Requirements
+
 | ID | Name | Description | Priority |
 |---|---|---|---|
 | FR-1 |  |  | Must |

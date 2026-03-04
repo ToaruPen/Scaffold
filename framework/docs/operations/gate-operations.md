@@ -49,7 +49,11 @@ Runners:
 - `framework/scripts/ci/run_review_engine.py`
 - `framework/scripts/ci/run_final_review.py`
 
-Each runner writes artifacts under `.scaffold/review_results/<scope_id>/<run_id>/...`.
+Each runner writes artifacts under `.scaffold/review_results/<scope_id>/<run_id>/<stage>/`.
+
+- test-review stage: `.scaffold/review_results/<scope_id>/<run_id>/test-review/`
+- review-cycle stage: `.scaffold/review_results/<scope_id>/<run_id>/review-cycle/`
+- final-review stage: `.scaffold/review_results/<scope_id>/<run_id>/final-review/`
 
 ## Waiver Operations
 

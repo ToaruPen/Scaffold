@@ -18,7 +18,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: python -m pip install -r requirements-dev.txt
+        run: python -m pip install -r framework/requirements-dev.txt
 
       - name: Validate schema files
         run: check-jsonschema --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json

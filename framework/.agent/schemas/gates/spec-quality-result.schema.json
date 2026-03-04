@@ -34,5 +34,24 @@
       "type": "array",
       "items": {"$ref": "../common/adapter-error.schema.json"}
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "has_acceptance_criteria": {"const": false}
+        }
+      },
+      "then": {
+        "properties": {
+          "acceptance_criteria_count": {"const": 0}
+        }
+      },
+      "else": {
+        "properties": {
+          "acceptance_criteria_count": {"minimum": 1}
+        }
+      }
+    }
+  ]
 }

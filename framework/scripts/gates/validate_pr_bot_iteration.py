@@ -65,6 +65,7 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
             }
         )
 
+    mismatch_reasons = list(dict.fromkeys(mismatch_reasons))
     passed = len(mismatch_reasons) == 0
     result: dict[str, Any] = {
         "request_id": request_id,

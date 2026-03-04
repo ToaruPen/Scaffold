@@ -35,6 +35,10 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     scope_restriction = optional_text(waiver, "scope_restriction", "waiver")
 
     mismatch_reasons: list[str] = []
+    if scope_restriction is not None and scope_restriction.startswith("scope:"):
+        restricted_scope = scope_restriction.split(":", 1)[1].strip()
+        if restricted_scope and restricted_scope != scope_id:
+            mismatch_reasons.append("scope_restriction_mismatch")
     passed = len(mismatch_reasons) == 0
     result: dict[str, Any] = {
         "request_id": request_id,

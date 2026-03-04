@@ -93,9 +93,7 @@ class RunTestReviewTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
 
-            run_root = (
-                tmp_path / ".scaffold/review_results/issue-11/run-test-review/codex/test-review"
-            )
+            run_root = tmp_path / ".scaffold/review_results/issue-11/run-test-review/test-review"
             output_dir = run_root / "outputs"
             intermediate_dir = run_root / "intermediate"
 

@@ -27,5 +27,16 @@ jobs:
         run: python3 -m unittest discover -s tests/framework -p "test_validate_*.py"
 
       # Customize/remove this if your repository does not provide root Makefile targets
+      - name: Check verify target
+        id: check_verify
+        shell: bash
+        run: |
+          if make -n verify >/dev/null 2>&1; then
+            echo "has_verify=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_verify=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Optional full verify
+        if: steps.check_verify.outputs.has_verify == 'true'
         run: make verify

@@ -41,7 +41,7 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     adr_index = require_object(payload, "adr_index")
     entries = _require_entries(adr_index)
 
-    mismatch_reasons: list[str] = []
+    mismatch_reasons: set[str] = set()
     seen: set[str] = set()
     normalized_entries: list[dict[str, str]] = []
     for index, entry in enumerate(entries):
@@ -52,7 +52,7 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         file_path = require_text(entry, "file_path", parent)
 
         if adr_id in seen:
-            mismatch_reasons.append("duplicate_adr_id")
+            mismatch_reasons.add("duplicate_adr_id")
         seen.add(adr_id)
 
         normalized_entries.append(
@@ -64,7 +64,8 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
             }
         )
 
-    passed = len(mismatch_reasons) == 0
+    mismatch_reason_list = sorted(mismatch_reasons)
+    passed = len(mismatch_reason_list) == 0
     result: dict[str, Any] = {
         "request_id": request_id,
         "scope_id": scope_id,
@@ -73,7 +74,7 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         "artifact_path": artifact_path,
         "entries": normalized_entries,
         "entry_count": len(normalized_entries),
-        "mismatch_reasons": mismatch_reasons,
+        "mismatch_reasons": mismatch_reason_list,
     }
     if not passed:
         result["errors"] = [error_dict("E_PROVIDER_FAILURE", "adr index check failed", "vcs")]

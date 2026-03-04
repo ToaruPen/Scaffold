@@ -11,6 +11,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from framework.scripts.lib.ci_helpers import (
+    relative_path as _ci_relative_path,
+)
+from framework.scripts.lib.ci_helpers import (
+    run_command as _ci_run_command,
+)
+from framework.scripts.lib.ci_helpers import (
+    run_gate as _ci_run_gate,
+)
+from framework.scripts.lib.ci_helpers import (
+    write_json as _ci_write_json,
+)
+
 
 @dataclass(frozen=True)
 class RunnerConfig:
@@ -28,6 +41,8 @@ class RunnerConfig:
     claude_model: str | None
     codex_reasoning_effort: str | None
     claude_effort: str | None
+    declared_targets_file: Path | None
+    adr_index_file: Path | None
 
 
 @dataclass(frozen=True)
@@ -57,27 +72,7 @@ def _run_command(
     timeout_sec: int,
     stdin_text: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    try:
-        return subprocess.run(
-            command,
-            cwd=cwd,
-            input=stdin_text,
-            capture_output=True,
-            text=True,
-            timeout=timeout_sec,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        stdout_text = _stream_to_text(exc.stdout)
-        stderr_text = _stream_to_text(exc.stderr)
-        timeout_message = f"command timed out after {timeout_sec}s"
-        stderr_text = f"{stderr_text}\n{timeout_message}" if stderr_text else timeout_message
-        return subprocess.CompletedProcess(
-            args=command,
-            returncode=124,
-            stdout=stdout_text,
-            stderr=stderr_text,
-        )
+    return _ci_run_command(command, cwd=cwd, timeout_sec=timeout_sec, stdin_text=stdin_text)
 
 
 def _git_short_sha(repo_root: Path, ref: str) -> str | None:
@@ -262,10 +257,7 @@ def _normalize_review(
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    _ci_write_json(path, payload)
 
 
 def _validate_schema(repo_root: Path, schema_path: Path, target_path: Path) -> None:
@@ -280,7 +272,7 @@ def _validate_schema(repo_root: Path, schema_path: Path, target_path: Path) -> N
 
 
 def _relative_path(repo_root: Path, path: Path) -> str:
-    return path.resolve().relative_to(repo_root.resolve()).as_posix()
+    return _ci_relative_path(repo_root, path)
 
 
 def _run_gate(
@@ -291,18 +283,13 @@ def _run_gate(
     output_path: Path,
     policy_path: Path | None = None,
 ) -> int:
-    command = [
-        "python3",
-        str(gate_script),
-        "--input",
-        str(input_path),
-        "--output",
-        str(output_path),
-    ]
-    if policy_path is not None:
-        command.extend(["--policy", str(policy_path)])
-    result = _run_command(command, cwd=repo_root, timeout_sec=120)
-    return result.returncode
+    return _ci_run_gate(
+        repo_root=repo_root,
+        gate_script=gate_script,
+        input_path=input_path,
+        output_path=output_path,
+        policy_path=policy_path,
+    )
 
 
 def _build_gate_input(
@@ -332,14 +319,13 @@ def _run_engine(
     raw_output_path: Path,
 ) -> str:
     if config.engine == "codex":
-        command = ["codex"]
+        command = ["codex", "exec"]
         if config.codex_model:
             command.extend(["--model", config.codex_model])
         if config.codex_reasoning_effort:
             command.extend(["-c", f"model_reasoning_effort={config.codex_reasoning_effort}"])
         command.extend(
             [
-                "exec",
                 "--full-auto",
                 "--sandbox",
                 "read-only",
@@ -427,6 +413,16 @@ def _parse_args() -> RunnerConfig:
         default=os.getenv("SCAFFOLD_CLAUDE_EFFORT"),
         help="Claude effort override (low|medium|high) or SCAFFOLD_CLAUDE_EFFORT",
     )
+    parser.add_argument(
+        "--declared-targets-file",
+        default=os.getenv("SCAFFOLD_DECLARED_TARGETS_FILE"),
+        help="Path to declared issue targets artifact for drift detection",
+    )
+    parser.add_argument(
+        "--adr-index-file",
+        default=os.getenv("SCAFFOLD_ADR_INDEX_FILE"),
+        help="Path to ADR index artifact for adr-index-consistency gate",
+    )
     args = parser.parse_args()
 
     run_id = args.run_id
@@ -448,12 +444,17 @@ def _parse_args() -> RunnerConfig:
         claude_model=args.claude_model,
         codex_reasoning_effort=args.codex_reasoning_effort,
         claude_effort=args.claude_effort,
+        declared_targets_file=(
+            Path(args.declared_targets_file) if args.declared_targets_file else None
+        ),
+        adr_index_file=(Path(args.adr_index_file) if args.adr_index_file else None),
     )
 
 
 def main() -> int:
     config = _parse_args()
     repo_root = Path.cwd()
+    stage = "review-cycle"
 
     head_sha = _git_short_sha(repo_root, "HEAD")
     if head_sha is None:
@@ -468,7 +469,7 @@ def main() -> int:
         return 2
 
     request_id = f"req-{config.engine}-{config.run_id}"
-    run_dir = repo_root / config.results_dir / config.scope_id / config.run_id / config.engine
+    run_dir = repo_root / config.results_dir / config.scope_id / config.run_id / stage
     output_dir = run_dir / "outputs"
     intermediate_dir = run_dir / "intermediate"
     output_dir.mkdir(parents=True, exist_ok=True)

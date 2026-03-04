@@ -32,7 +32,7 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     topics = require_list_of_texts(research, "topics", "research")
 
     mismatch_reasons: list[str] = []
-    passed = len(mismatch_reasons) == 0
+    passed = True
     result: dict[str, Any] = {
         "request_id": request_id,
         "scope_id": scope_id,
@@ -44,10 +44,6 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         "topics": topics,
         "mismatch_reasons": mismatch_reasons,
     }
-    if not passed:
-        result["errors"] = [
-            error_dict("E_PROVIDER_FAILURE", "research contract check failed", "vcs")
-        ]
     return result, passed
 
 

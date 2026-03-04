@@ -13,26 +13,12 @@ from framework.scripts.lib.gate_helpers import (
     error_dict,
     parse_gate_args,
     read_json,
+    require_bool,
+    require_int,
     require_object,
     require_text,
     write_result,
 )
-
-
-def _require_bool(obj: dict[str, Any], key: str, parent: str = "") -> bool:
-    raw = obj.get(key)
-    prefix = f"{parent}." if parent else ""
-    if not isinstance(raw, bool):
-        raise ValueError(f"missing or invalid boolean: {prefix}{key}")
-    return raw
-
-
-def _require_int(obj: dict[str, Any], key: str, parent: str = "") -> int:
-    raw = obj.get(key)
-    prefix = f"{parent}." if parent else ""
-    if not isinstance(raw, int):
-        raise ValueError(f"missing or invalid integer: {prefix}{key}")
-    return raw
 
 
 def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
@@ -43,9 +29,9 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
 
     spec = require_object(payload, "spec")
     spec_ref = require_text(spec, "artifact_ref", "spec")
-    has_acceptance_criteria = _require_bool(spec, "has_acceptance_criteria", "spec")
-    has_out_of_scope = _require_bool(spec, "has_out_of_scope", "spec")
-    acceptance_criteria_count = _require_int(spec, "acceptance_criteria_count", "spec")
+    has_acceptance_criteria = require_bool(spec, "has_acceptance_criteria", "spec")
+    has_out_of_scope = require_bool(spec, "has_out_of_scope", "spec")
+    acceptance_criteria_count = require_int(spec, "acceptance_criteria_count", "spec")
 
     mismatch_reasons: list[str] = []
     if not has_acceptance_criteria:

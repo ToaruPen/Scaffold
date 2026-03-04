@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,6 +24,10 @@ class RunnerConfig:
     codex_schema: Path
     policy_path: Path
     timeout_sec: int
+    codex_model: str | None
+    claude_model: str | None
+    codex_reasoning_effort: str | None
+    claude_effort: str | None
 
 
 @dataclass(frozen=True)
@@ -36,6 +42,14 @@ class ReviewContext:
     engine: str
 
 
+def _stream_to_text(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return ""
+
+
 def _run_command(
     command: list[str],
     *,
@@ -43,15 +57,27 @@ def _run_command(
     timeout_sec: int,
     stdin_text: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        command,
-        cwd=cwd,
-        input=stdin_text,
-        capture_output=True,
-        text=True,
-        timeout=timeout_sec,
-        check=False,
-    )
+    try:
+        return subprocess.run(
+            command,
+            cwd=cwd,
+            input=stdin_text,
+            capture_output=True,
+            text=True,
+            timeout=timeout_sec,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout_text = _stream_to_text(exc.stdout)
+        stderr_text = _stream_to_text(exc.stderr)
+        timeout_message = f"command timed out after {timeout_sec}s"
+        stderr_text = f"{stderr_text}\n{timeout_message}" if stderr_text else timeout_message
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=124,
+            stdout=stdout_text,
+            stderr=stderr_text,
+        )
 
 
 def _git_short_sha(repo_root: Path, ref: str) -> str | None:
@@ -306,18 +332,24 @@ def _run_engine(
     raw_output_path: Path,
 ) -> str:
     if config.engine == "codex":
-        command = [
-            "codex",
-            "exec",
-            "--full-auto",
-            "--sandbox",
-            "read-only",
-            "--output-schema",
-            str(config.codex_schema),
-            "--output-last-message",
-            str(raw_output_path),
-            "-",
-        ]
+        command = ["codex"]
+        if config.codex_model:
+            command.extend(["--model", config.codex_model])
+        if config.codex_reasoning_effort:
+            command.extend(["-c", f"model_reasoning_effort={config.codex_reasoning_effort}"])
+        command.extend(
+            [
+                "exec",
+                "--full-auto",
+                "--sandbox",
+                "read-only",
+                "--output-schema",
+                str(config.codex_schema),
+                "--output-last-message",
+                str(raw_output_path),
+                "-",
+            ]
+        )
         result = _run_command(
             command,
             cwd=repo_root,
@@ -345,6 +377,10 @@ def _run_engine(
         schema_text,
         prompt_text,
     ]
+    if config.claude_model:
+        command[1:1] = ["--model", config.claude_model]
+    if config.claude_effort:
+        command[1:1] = ["--effort", config.claude_effort]
     result = _run_command(command, cwd=repo_root, timeout_sec=config.timeout_sec)
     if result.returncode != 0:
         message = result.stderr.strip() or result.stdout.strip()
@@ -371,6 +407,26 @@ def _parse_args() -> RunnerConfig:
     )
     parser.add_argument("--policy", default="framework/config/review-evidence-policy.yaml")
     parser.add_argument("--timeout-sec", type=int, default=900)
+    parser.add_argument(
+        "--codex-model",
+        default=os.getenv("SCAFFOLD_CODEX_MODEL"),
+        help="Codex model override (or SCAFFOLD_CODEX_MODEL)",
+    )
+    parser.add_argument(
+        "--claude-model",
+        default=os.getenv("SCAFFOLD_CLAUDE_MODEL"),
+        help="Claude model override (or SCAFFOLD_CLAUDE_MODEL)",
+    )
+    parser.add_argument(
+        "--codex-reasoning-effort",
+        default=os.getenv("SCAFFOLD_CODEX_REASONING_EFFORT"),
+        help="Codex reasoning effort override via config (or SCAFFOLD_CODEX_REASONING_EFFORT)",
+    )
+    parser.add_argument(
+        "--claude-effort",
+        default=os.getenv("SCAFFOLD_CLAUDE_EFFORT"),
+        help="Claude effort override (low|medium|high) or SCAFFOLD_CLAUDE_EFFORT",
+    )
     args = parser.parse_args()
 
     run_id = args.run_id
@@ -388,6 +444,10 @@ def _parse_args() -> RunnerConfig:
         codex_schema=Path(args.codex_output_schema),
         policy_path=Path(args.policy),
         timeout_sec=args.timeout_sec,
+        codex_model=args.codex_model,
+        claude_model=args.claude_model,
+        codex_reasoning_effort=args.codex_reasoning_effort,
+        claude_effort=args.claude_effort,
     )
 
 
@@ -397,14 +457,24 @@ def main() -> int:
 
     head_sha = _git_short_sha(repo_root, "HEAD")
     if head_sha is None:
-        head_sha = "uncommi1"
+        print(
+            "failed to resolve HEAD sha; create an initial commit before running review",
+            file=sys.stderr,
+        )
+        return 2
     base_sha = _git_short_sha(repo_root, config.base_ref)
+    if base_sha is None:
+        print(f"failed to resolve base ref sha: {config.base_ref}", file=sys.stderr)
+        return 2
 
     request_id = f"req-{config.engine}-{config.run_id}"
-    run_dir = repo_root / config.results_dir / config.scope_id / config.run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
+    run_dir = repo_root / config.results_dir / config.scope_id / config.run_id / config.engine
+    output_dir = run_dir / "outputs"
+    intermediate_dir = run_dir / "intermediate"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    intermediate_dir.mkdir(parents=True, exist_ok=True)
 
-    review_json_path = run_dir / f"{config.engine}-review.json"
+    review_json_path = output_dir / "review.json"
     artifact_path = _relative_path(repo_root, review_json_path)
     context = ReviewContext(
         request_id=request_id,
@@ -423,9 +493,9 @@ def main() -> int:
         focus_paths=focus_paths,
         context=context,
     )
-    (run_dir / "prompt.txt").write_text(prompt_text, encoding="utf-8")
+    (intermediate_dir / "prompt.txt").write_text(prompt_text, encoding="utf-8")
 
-    raw_output_path = run_dir / f"{config.engine}-raw-output.txt"
+    raw_output_path = intermediate_dir / "raw-output.txt"
     raw_text = _run_engine(
         config=config,
         repo_root=repo_root,
@@ -442,8 +512,8 @@ def main() -> int:
 
     _validate_schema(repo_root, repo_root / config.canonical_schema, review_json_path)
 
-    review_cycle_input = run_dir / f"{config.engine}-review-cycle-input.json"
-    review_cycle_result = run_dir / f"{config.engine}-review-cycle-result.json"
+    review_cycle_input = intermediate_dir / "review-cycle.input.json"
+    review_cycle_result = output_dir / "review-cycle.result.json"
     review_cycle_artifact = context.artifact_path
     _write_json(
         review_cycle_input,
@@ -460,8 +530,8 @@ def main() -> int:
         output_path=review_cycle_result,
     )
 
-    review_evidence_input = run_dir / f"{config.engine}-review-evidence-input.json"
-    review_evidence_result = run_dir / f"{config.engine}-review-evidence-result.json"
+    review_evidence_input = intermediate_dir / "review-evidence.input.json"
+    review_evidence_result = output_dir / "review-evidence.result.json"
     review_evidence_artifact = _relative_path(repo_root, review_evidence_result)
     _write_json(
         review_evidence_input,
@@ -487,14 +557,32 @@ def main() -> int:
         "head_sha": head_sha,
         "base_ref": config.base_ref,
         "base_sha": base_sha,
-        "results_dir": _relative_path(repo_root, run_dir),
+        "run_dir": _relative_path(repo_root, run_dir),
+        "output_dir": _relative_path(repo_root, output_dir),
+        "intermediate_dir": _relative_path(repo_root, intermediate_dir),
         "review_json": artifact_path,
         "review_cycle_result": _relative_path(repo_root, review_cycle_result),
         "review_evidence_result": _relative_path(repo_root, review_evidence_result),
+        "review_cycle_input": _relative_path(repo_root, review_cycle_input),
+        "review_evidence_input": _relative_path(repo_root, review_evidence_input),
+        "raw_output": _relative_path(repo_root, raw_output_path),
+        "prompt": _relative_path(repo_root, intermediate_dir / "prompt.txt"),
         "review_cycle_exit_code": cycle_exit,
         "review_evidence_exit_code": evidence_exit,
+        "configured_model": (
+            config.codex_model if config.engine == "codex" else config.claude_model
+        ),
+        "configured_effort": (
+            config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
+        ),
+        "entrypoints": {
+            "primary_review": _relative_path(repo_root, review_json_path),
+            "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),
+            "review_evidence_gate_result": _relative_path(repo_root, review_evidence_result),
+        },
     }
-    _write_json(run_dir / "run-metadata.json", metadata)
+    _write_json(output_dir / "index.json", metadata)
+    _write_json(output_dir / "run-metadata.json", metadata)
 
     print(json.dumps(metadata, ensure_ascii=True, indent=2, sort_keys=True))
     if cycle_exit == 0 and evidence_exit == 0:

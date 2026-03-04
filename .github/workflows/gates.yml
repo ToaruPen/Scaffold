@@ -1,0 +1,33 @@
+name: gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate-contracts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Validate schema files
+        run: check-jsonschema --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json
+
+      - name: Run gate validators tests
+        run: python3 -m unittest discover -s tests/framework -p "test_validate_*.py"
+
+      - name: Run review runner tests
+        run: python3 -m unittest discover -s tests/framework -p "test_run_*review*.py"
+
+      - name: Run full verify
+        run: make verify

@@ -1,0 +1,76 @@
+{
+  "help_final_review": {
+    "exit": 0
+  },
+  "help_test_review": {
+    "exit": 0
+  },
+  "integration_chain_tests": {
+    "exit": 0
+  },
+  "overall": "pass",
+  "t11_fail": {
+    "exit": 2,
+    "status": "fail"
+  },
+  "t11_pass": {
+    "exit": 0,
+    "status": "pass"
+  },
+  "t12_edge_empty_entries": {
+    "exit": 2,
+    "status": "fail"
+  },
+  "t12_fail_dup": {
+    "exit": 2,
+    "status": "fail"
+  },
+  "t12_pass": {
+    "exit": 0,
+    "status": "pass"
+  },
+  "t13_fail": {
+    "exit": 2,
+    "status": "fail"
+  },
+  "t13_pass": {
+    "exit": 0,
+    "status": "pass"
+  },
+  "t13_warn_only": {
+    "exit": 0,
+    "status": "pass"
+  },
+  "t14_fail": {
+    "exit": 2,
+    "status": "fail"
+  },
+  "t14_pass": {
+    "exit": 0,
+    "status": "pass"
+  },
+  "t5_fail": {
+    "exit": 2,
+    "status": "fail"
+  },
+  "t5_pass": {
+    "exit": 0,
+    "status": "pass"
+  },
+  "t6_fail": {
+    "exit": 2,
+    "status": "fail"
+  },
+  "t6_pass": {
+    "exit": 0,
+    "status": "pass"
+  },
+  "t7_fail": {
+    "exit": 2,
+    "status": "fail"
+  },
+  "t7_pass": {
+    "exit": 0,
+    "status": "pass"
+  }
+}

@@ -168,6 +168,63 @@ class ValidateAdrIndexTests(unittest.TestCase):
             body = json.loads(result.stdout)
             self.assertIn("missing_adr_file", body["mismatch_reasons"])
 
+    def test_fails_when_adr_file_path_is_absolute_outside_repo(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as repo_tmp,
+            tempfile.TemporaryDirectory() as outside_tmp,
+        ):
+            repo_root = Path(repo_tmp)
+            outside_adr = Path(outside_tmp) / "ADR-900.md"
+            _write_adr(outside_adr, adr_id="ADR-900", title="Outside", status="accepted")
+
+            payload = {
+                "request_id": "req-adr-7",
+                "scope_id": "issue-14",
+                "run_id": "run-7",
+                "artifact_path": "docs/adr/index.json",
+                "adr_index": {
+                    "entries": [
+                        {
+                            "adr_id": "ADR-900",
+                            "title": "Outside",
+                            "status": "accepted",
+                            "file_path": str(outside_adr),
+                        }
+                    ]
+                },
+            }
+            result = self._run(payload, cwd=repo_root)
+            self.assertEqual(result.returncode, 2)
+            body = json.loads(result.stdout)
+            self.assertIn("adr_file_outside_repo", body["mismatch_reasons"])
+
+    def test_fails_when_adr_file_path_traverses_outside_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as repo_tmp:
+            repo_root = Path(repo_tmp)
+            outside_adr = (repo_root / ".." / "ADR-901.md").resolve()
+            _write_adr(outside_adr, adr_id="ADR-901", title="Traversal", status="accepted")
+
+            payload = {
+                "request_id": "req-adr-8",
+                "scope_id": "issue-14",
+                "run_id": "run-8",
+                "artifact_path": "docs/adr/index.json",
+                "adr_index": {
+                    "entries": [
+                        {
+                            "adr_id": "ADR-901",
+                            "title": "Traversal",
+                            "status": "accepted",
+                            "file_path": "../ADR-901.md",
+                        }
+                    ]
+                },
+            }
+            result = self._run(payload, cwd=repo_root)
+            self.assertEqual(result.returncode, 2)
+            body = json.loads(result.stdout)
+            self.assertIn("adr_file_outside_repo", body["mismatch_reasons"])
+
     def test_fails_when_adr_metadata_mismatches_index(self) -> None:
         with tempfile.TemporaryDirectory() as repo_tmp:
             repo_root = Path(repo_tmp)

@@ -8,7 +8,8 @@ import unittest
 from collections.abc import Mapping
 from pathlib import Path
 
-SCRIPT = Path("framework/scripts/gates/validate_drift_detection.py")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = REPO_ROOT / "framework/scripts/gates/validate_drift_detection.py"
 
 
 class ValidateDriftDetectionTests(unittest.TestCase):
@@ -92,6 +93,21 @@ class ValidateDriftDetectionTests(unittest.TestCase):
         self.assertEqual(body["undeclared_additions"], [])
         self.assertEqual(body["actual_changes"], [])
         self.assertIn("src/auth/", body["unused_declarations"])
+
+    def test_fails_when_declared_targets_evidence_is_missing(self) -> None:
+        payload = {
+            "request_id": "req-drift-5",
+            "scope_id": "issue-15",
+            "run_id": "run-5",
+            "artifact_path": "artifacts/drift/issue-15.json",
+            "declared_targets": ["__missing_declared_targets__"],
+            "actual_changes": [],
+        }
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["status"], "fail")
+        self.assertIn("missing_declared_targets", body["mismatch_reasons"])
 
 
 if __name__ == "__main__":

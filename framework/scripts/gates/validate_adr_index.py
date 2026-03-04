@@ -32,11 +32,16 @@ def _require_entries(adr_index: dict[str, Any]) -> list[dict[str, Any]]:
     return values
 
 
-def _resolve_adr_file_path(repo_root: Path, file_path: str) -> Path:
+def _resolve_adr_file_path(repo_root: Path, file_path: str) -> Path | None:
     path = Path(file_path)
-    if path.is_absolute():
-        return path
-    return repo_root / path
+    candidate = path if path.is_absolute() else repo_root / path
+    resolved_repo_root = repo_root.resolve()
+    resolved_candidate = candidate.resolve()
+    try:
+        resolved_candidate.relative_to(resolved_repo_root)
+    except ValueError:
+        return None
+    return resolved_candidate
 
 
 def _extract_markdown_sections(text: str) -> dict[str, str]:
@@ -113,7 +118,9 @@ def _build_result(payload: dict[str, Any], repo_root: Path) -> tuple[dict[str, A
         seen.add(adr_id)
 
         resolved_file_path = _resolve_adr_file_path(repo_root, file_path)
-        if not resolved_file_path.is_file():
+        if resolved_file_path is None:
+            mismatch_reasons.add("adr_file_outside_repo")
+        elif not resolved_file_path.is_file():
             mismatch_reasons.add("missing_adr_file")
         else:
             metadata = _load_adr_metadata(resolved_file_path)

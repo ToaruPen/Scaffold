@@ -18,6 +18,8 @@ from framework.scripts.lib.gate_helpers import (
     write_result,
 )
 
+_MISSING_DECLARED_TARGETS_SENTINEL = "__missing_declared_targets__"
+
 
 def _matches_target(target: str, changed_path: str) -> bool:
     normalized_target = target.strip()
@@ -61,10 +63,13 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
             unused_declarations.append(target)
 
     mismatch_reasons: list[str] = []
+    missing_declaration_evidence = _MISSING_DECLARED_TARGETS_SENTINEL in declared_targets
+    if missing_declaration_evidence:
+        mismatch_reasons.append("missing_declared_targets")
     if undeclared_additions:
         mismatch_reasons.append("undeclared_change_detected")
 
-    passed = len(undeclared_additions) == 0
+    passed = len(undeclared_additions) == 0 and not missing_declaration_evidence
     result: dict[str, Any] = {
         "request_id": request_id,
         "scope_id": scope_id,

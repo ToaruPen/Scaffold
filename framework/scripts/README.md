@@ -122,12 +122,12 @@ Distributable script layer for consumer repositories.
   - Exit code: `0` (valid), `2` (invalid input/mismatch).
 
 - `framework/scripts/gates/validate_adr_index.py`
-  - Validates ADR index entry structure, duplicate `adr_id`, indexed ADR file existence, and ADR body metadata consistency.
+  - Validates ADR index entry structure, duplicate `adr_id`, indexed ADR file existence, repository-bounded ADR paths, and ADR body metadata consistency.
   - Required top-level inputs: `request_id`, `scope_id`, `run_id`, `artifact_path`, `adr_index`.
   - Exit code: `0` (valid), `2` (invalid input/mismatch).
 
 - `framework/scripts/gates/validate_drift_detection.py`
-  - Validates declared change targets against actual changed path set (empty `actual_changes` is valid for no-diff runs).
+  - Validates declared change targets against actual changed path set (empty `actual_changes` is valid for no-diff runs, but missing declaration evidence fails).
   - Required top-level inputs: `request_id`, `scope_id`, `run_id`, `artifact_path`, `declared_targets`, `actual_changes`.
   - Exit code: `0` (no undeclared drift), `2` (drift or invalid input).
 

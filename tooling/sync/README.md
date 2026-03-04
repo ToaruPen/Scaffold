@@ -63,3 +63,6 @@ Output profiles:
 
 - default (`core` only): `tooling/sync/generated/default/`
 - with conditional (`core` + `conditional`): `tooling/sync/generated/with-conditional/`
+
+When `--output-root` is omitted, the script chooses the profile directory
+automatically (`default` without `--enable-conditional`, `with-conditional` with it).

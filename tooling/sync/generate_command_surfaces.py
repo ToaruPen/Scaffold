@@ -24,8 +24,11 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output-root",
-        default="tooling/sync/generated",
-        help="Output directory for generated surfaces (default: tooling/sync/generated)",
+        default=None,
+        help=(
+            "Output directory for generated surfaces "
+            "(default: tooling/sync/generated/default or .../with-conditional)"
+        ),
     )
     parser.add_argument(
         "--agent",
@@ -94,6 +97,11 @@ def _target_agents(agent: str) -> tuple[str, ...]:
     return (agent,)
 
 
+def _default_output_root(*, include_conditional: bool) -> Path:
+    profile = "with-conditional" if include_conditional else "default"
+    return Path("tooling/sync/generated") / profile
+
+
 def _build_surface(
     *,
     agent: str,
@@ -121,7 +129,11 @@ def _build_surface(
 def main() -> int:
     args = _parse_args()
     manifest_path = Path(args.manifest)
-    output_root = Path(args.output_root)
+    output_root = (
+        Path(args.output_root)
+        if args.output_root is not None
+        else _default_output_root(include_conditional=args.enable_conditional)
+    )
 
     try:
         manifest = _load_manifest(manifest_path)

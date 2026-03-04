@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -289,6 +290,71 @@ command_tiers:
             self.assertEqual(exit_code, 2)
             self.assertIn("permission denied", stderr.getvalue())
             self.assertFalse((output_root / "claude.commands.json").exists())
+
+    def test_uses_profile_specific_default_output_directories(self) -> None:
+        manifest_text = """\
+must_command_contracts:
+  /research:
+    requires: [research-before-spec]
+  /waiver:
+    requires: [waiver-exception]
+command_tiers:
+  /research: core
+  /waiver: conditional
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest_path = tmp_path / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            default_argv = [
+                "generate_command_surfaces.py",
+                "--manifest",
+                str(manifest_path),
+                "--agent",
+                "claude",
+            ]
+            conditional_argv = [
+                "generate_command_surfaces.py",
+                "--manifest",
+                str(manifest_path),
+                "--agent",
+                "claude",
+                "--enable-conditional",
+            ]
+
+            old_cwd = Path.cwd()
+            os.chdir(tmp_path)
+            try:
+                with patch.object(sys, "argv", default_argv):
+                    stdout = io.StringIO()
+                    stderr = io.StringIO()
+                    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                        default_exit_code = self.script.main()
+
+                with patch.object(sys, "argv", conditional_argv):
+                    stdout = io.StringIO()
+                    stderr = io.StringIO()
+                    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                        conditional_exit_code = self.script.main()
+            finally:
+                os.chdir(old_cwd)
+
+            self.assertEqual(default_exit_code, 0)
+            self.assertEqual(conditional_exit_code, 0)
+
+            default_output = tmp_path / "tooling/sync/generated/default/claude.commands.json"
+            conditional_output = (
+                tmp_path / "tooling/sync/generated/with-conditional/claude.commands.json"
+            )
+
+            self.assertTrue(default_output.exists())
+            self.assertTrue(conditional_output.exists())
+
+            default_payload = json.loads(default_output.read_text(encoding="utf-8"))
+            conditional_payload = json.loads(conditional_output.read_text(encoding="utf-8"))
+            self.assertEqual(default_payload["commands"], ["/research"])
+            self.assertEqual(conditional_payload["commands"], ["/research", "/waiver"])
 
 
 if __name__ == "__main__":

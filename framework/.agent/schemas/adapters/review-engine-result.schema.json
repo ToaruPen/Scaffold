@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scaffold.local/schemas/adapters/review-engine-result.schema.json",
+  "title": "ReviewEngineResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "scope_id",
+    "run_id",
+    "status",
+    "summary",
+    "findings",
+    "evidence",
+    "provider_metadata"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "approved_with_nits",
+        "needs_changes",
+        "blocked",
+        "question"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "finding_id",
+          "severity",
+          "title",
+          "detail",
+          "path",
+          "start_line",
+          "end_line",
+          "snippet"
+        ],
+        "properties": {
+          "finding_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "snippet": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "head_sha",
+        "artifact_path",
+        "created_at"
+      ],
+      "properties": {
+        "head_sha": {
+          "type": "string",
+          "minLength": 7
+        },
+        "base_sha": {
+          "type": "string",
+          "minLength": 7
+        },
+        "artifact_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "provider_metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "provider"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/adapter-error.schema.json"
+      }
+    }
+  }
+}

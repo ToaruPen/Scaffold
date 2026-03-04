@@ -1,0 +1,48 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "I",
+  "W",
+  "B",
+  "PLE",
+  "UP",
+  "RUF",
+  "C4",
+  "C90",
+  "SIM",
+  "PLC",
+  "PLW",
+  "ANN",
+  "PLR",
+]
+ignore = [
+  "W191",
+  "E111",
+  "E114",
+  "E117",
+  "D206",
+  "D300",
+  "Q000",
+  "Q001",
+  "Q002",
+  "Q003",
+  "COM812",
+  "COM819",
+  "ISC002",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.mypy]
+python_version = "3.11"
+files = ["framework/scripts/gates", "tests/framework"]
+strict = true
+warn_unused_configs = true
+disallow_any_generics = true
+show_error_codes = true

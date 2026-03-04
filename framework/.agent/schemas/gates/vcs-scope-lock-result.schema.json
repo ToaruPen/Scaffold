@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scaffold.local/schemas/gates/vcs-scope-lock-result.schema.json",
+  "title": "VcsScopeLockResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "scope_id",
+    "run_id",
+    "matched",
+    "current_branch",
+    "head_sha",
+    "mismatch_reasons",
+    "artifact_path"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "matched": {
+      "type": "boolean"
+    },
+    "current_branch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_branch": {
+      "type": "string"
+    },
+    "head_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "base_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "mismatch_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "artifact_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/adapter-error.schema.json"
+      }
+    }
+  }
+}

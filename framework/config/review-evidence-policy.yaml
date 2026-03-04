@@ -1,0 +1,7 @@
+rerun:
+  fail_on_classifications:
+    - stale
+    - schema_invalid
+  fail_on_unmapped_severity:
+    - P0
+    - P1

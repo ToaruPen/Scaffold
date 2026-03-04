@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scaffold.local/schemas/gates/overlap-safety-result.schema.json",
+  "title": "OverlapSafetyResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "scope_id",
+    "run_id",
+    "status",
+    "artifact_path",
+    "checked_scope_count",
+    "overlaps"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "artifact_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "head_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "base_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "checked_scope_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "overlaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope_id",
+          "paths"
+        ],
+        "properties": {
+          "scope_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/adapter-error.schema.json"
+      }
+    }
+  }
+}

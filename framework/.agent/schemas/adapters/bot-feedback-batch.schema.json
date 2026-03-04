@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scaffold.local/schemas/adapters/bot-feedback-batch.schema.json",
+  "title": "BotFeedbackBatch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "provider",
+    "pr_number",
+    "cycle",
+    "status",
+    "findings"
+  ],
+  "properties": {
+    "provider": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pr_number": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "cycle": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "no_findings",
+        "findings_present",
+        "provider_error"
+      ]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "finding_id",
+          "severity",
+          "title",
+          "detail",
+          "path",
+          "start_line",
+          "end_line",
+          "snippet",
+          "fingerprint"
+        ],
+        "properties": {
+          "finding_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "snippet": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fingerprint": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/adapter-error.schema.json"
+      }
+    },
+    "provider_metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

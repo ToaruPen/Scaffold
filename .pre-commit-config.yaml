@@ -1,0 +1,43 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-json
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.11
+    hooks:
+      - id: ruff
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2
+    hooks:
+      - id: mypy
+        pass_filenames: false
+        args:
+          - --config-file=pyproject.toml
+          - framework/scripts/gates
+          - tests/framework
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.34.1
+    hooks:
+      - id: check-jsonschema
+        name: check-jsonschema (framework schemas)
+        files: ^framework/\.agent/schemas/.*\.json$
+        args:
+          - --schemafile
+          - https://json-schema.org/draft/2020-12/schema
+
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.24.0
+    hooks:
+      - id: commitlint
+        stages:
+          - commit-msg
+        additional_dependencies:
+          - "@commitlint/config-conventional"

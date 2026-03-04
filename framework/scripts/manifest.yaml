@@ -1,0 +1,171 @@
+version: 2
+
+owners:
+  gates: framework/scripts/gates
+  lint: framework/scripts/lint
+  ci: framework/scripts/ci
+  hooks: framework/scripts/hooks
+  lib: framework/scripts/lib
+
+contracts:
+  - id: research-before-spec
+    description: Research artifact exists before PRD/Epic creation
+    validator: framework/scripts/gates/validate_research_contract.py
+    status: planned
+
+  - id: spec-quality-minimum
+    description: PRD/Epic include measurable acceptance criteria and out-of-scope section
+    validator: framework/scripts/gates/validate_spec_quality.py
+    status: planned
+
+  - id: issue-change-targets-declared
+    description: Issue declares estimated change targets for parallel overlap detection
+    validator: framework/scripts/gates/validate_issue_targets.py
+    status: planned
+
+  - id: scope-lock
+    description: Scope identity (issue/branch/pr head/range) must match before high-impact operations
+    validator: framework/scripts/gates/validate_scope_lock.py
+    result_schema: framework/.agent/schemas/gates/vcs-scope-lock-result.schema.json
+    status: implemented
+
+  - id: overlap-safety
+    description: Parallel issues must have no overlapping change targets or be serialized
+    validator: framework/scripts/gates/validate_overlap_safety.py
+    result_schema: framework/.agent/schemas/gates/overlap-safety-result.schema.json
+    status: implemented
+
+  - id: estimate-approval
+    description: Estimate approval artifact exists and is valid
+    validator: framework/scripts/gates/validate_estimate_approval.py
+    result_schema: framework/.agent/schemas/gates/estimate-approval-result.schema.json
+    status: implemented
+
+  - id: mode-selection-recorded
+    description: Implementation mode selection (impl/tdd/custom) and reason are recorded
+    validator: framework/scripts/gates/validate_mode_selection.py
+    result_schema: framework/.agent/schemas/gates/mode-selection-result.schema.json
+    status: implemented
+
+  - id: test-review-evidence
+    description: test-review evidence exists and passes contract checks
+    validator: framework/scripts/gates/validate_test_review.py
+    result_schema: framework/.agent/schemas/gates/test-review-result.schema.json
+    status: implemented
+
+  - id: review-cycle-evidence
+    description: review-cycle evidence exists and passes contract checks
+    validator: framework/scripts/gates/validate_review_cycle.py
+    result_schema: framework/.agent/schemas/gates/review-cycle-result.schema.json
+    status: implemented
+
+  - id: final-review-consistency
+    description: final-review validates drift and overall completion consistency
+    validator: framework/scripts/gates/validate_final_review.py
+    result_schema: framework/.agent/schemas/gates/final-review-result.schema.json
+    status: implemented
+
+  - id: review-evidence-link
+    description: Review evidence links to current commit/range
+    validator: framework/scripts/gates/validate_review_evidence.py
+    result_schema: framework/.agent/schemas/gates/review-evidence-link-result.schema.json
+    status: implemented
+
+  - id: pr-open-preconditions
+    description: PR creation requires required evidence and scope lock validation
+    validator: framework/scripts/gates/validate_pr_preconditions.py
+    result_schema: framework/.agent/schemas/gates/pr-preconditions-result.schema.json
+    status: implemented
+
+  - id: pr-bot-iteration
+    description: Bot feedback loop artifacts are normalized and traceable
+    validator: framework/scripts/gates/validate_pr_bot_iteration.py
+    status: planned
+
+  - id: adr-index-consistency
+    description: ADR index and body files are consistent
+    validator: framework/scripts/gates/validate_adr_index.py
+    status: planned
+
+must_command_contracts:
+  /research:
+    requires:
+      - research-before-spec
+
+  /create-prd:
+    requires:
+      - spec-quality-minimum
+
+  /create-epic:
+    requires:
+      - spec-quality-minimum
+
+  /create-issues:
+    requires:
+      - issue-change-targets-declared
+
+  /estimation:
+    requires:
+      - estimate-approval
+      - mode-selection-recorded
+
+  /impl:
+    requires:
+      - estimate-approval
+      - mode-selection-recorded
+
+  /tdd:
+    requires:
+      - estimate-approval
+      - mode-selection-recorded
+
+  /worktree:
+    requires:
+      - scope-lock
+      - overlap-safety
+
+  /test-review:
+    requires:
+      - test-review-evidence
+      - review-evidence-link
+
+  /review-cycle:
+    requires:
+      - review-cycle-evidence
+      - review-evidence-link
+
+  /final-review:
+    requires:
+      - final-review-consistency
+      - review-evidence-link
+      - adr-index-consistency
+
+  /create-pr:
+    requires:
+      - scope-lock
+      - pr-open-preconditions
+      - review-evidence-link
+
+  /pr-bots-review:
+    requires:
+      - pr-bot-iteration
+
+adapter_interfaces:
+  review_engine:
+    contract_doc: framework/docs/contract/adapter-interfaces.md#review-engine-adapter
+    result_schema: framework/.agent/schemas/adapters/review-engine-result.schema.json
+    error_schema: framework/.agent/schemas/common/adapter-error.schema.json
+    stub_impl: framework/scripts/lib/review_engine_stub.py
+
+  vcs:
+    contract_doc: framework/docs/contract/adapter-interfaces.md#vcs-adapter
+    scope_lock_schema: framework/.agent/schemas/gates/vcs-scope-lock-result.schema.json
+    overlap_safety_schema: framework/.agent/schemas/gates/overlap-safety-result.schema.json
+    error_schema: framework/.agent/schemas/common/adapter-error.schema.json
+    stub_impl: framework/scripts/lib/vcs_stub.py
+
+  bot:
+    contract_doc: framework/docs/contract/adapter-interfaces.md#bot-adapter
+    feedback_schema: framework/.agent/schemas/adapters/bot-feedback-batch.schema.json
+    error_schema: framework/.agent/schemas/common/adapter-error.schema.json
+    stub_impl: framework/scripts/lib/bot_stub.py

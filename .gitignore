@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.venv/
+
+# Node
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Local runtime state (do not commit)
+.scaffold-state/
+.scaffold/review_results/
+
+# Environment
+.env
+.env.*

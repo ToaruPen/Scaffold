@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scaffold.local/schemas/gates/review-evidence-link-result.schema.json",
+  "title": "ReviewEvidenceLinkResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "scope_id",
+    "run_id",
+    "stage",
+    "status",
+    "artifact_path",
+    "review_artifact_path",
+    "head_sha",
+    "policy_path",
+    "policy",
+    "mismatch_reasons",
+    "classification_counts",
+    "finding_checks"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stage": {
+      "type": "string",
+      "const": "review-evidence-link"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "artifact_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_artifact_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "head_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "base_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "review_head_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "policy_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fail_on_classifications",
+        "fail_on_unmapped_severity"
+      ],
+      "properties": {
+        "fail_on_classifications": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "stale",
+              "schema_invalid"
+            ]
+          }
+        },
+        "fail_on_unmapped_severity": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3"
+            ]
+          }
+        }
+      }
+    },
+    "review_base_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "mismatch_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "classification_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verified",
+        "stale",
+        "unmapped",
+        "schema_invalid"
+      ],
+      "properties": {
+        "verified": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unmapped": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "schema_invalid": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "finding_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "finding_id",
+          "severity",
+          "classification",
+          "reasons"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "finding_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3",
+              "unknown"
+            ]
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "stale",
+              "unmapped",
+              "schema_invalid"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/adapter-error.schema.json"
+      }
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scaffold.local/schemas/gates/final-review-result.schema.json",
+  "title": "FinalReviewResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "scope_id",
+    "run_id",
+    "stage",
+    "status",
+    "artifact_path",
+    "review_status",
+    "summary",
+    "head_sha",
+    "mismatch_reasons"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stage": {
+      "type": "string",
+      "const": "final-review"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "artifact_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "approved_with_nits",
+        "needs_changes",
+        "blocked",
+        "question"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "head_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "base_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "mismatch_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/adapter-error.schema.json"
+      }
+    }
+  }
+}

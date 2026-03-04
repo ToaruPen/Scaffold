@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scaffold.local/schemas/gates/mode-selection-result.schema.json",
+  "title": "ModeSelectionResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "scope_id",
+    "run_id",
+    "status",
+    "artifact_path",
+    "selected_mode",
+    "reason",
+    "estimate_approval",
+    "mismatch_reasons"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "artifact_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "selected_mode": {
+      "type": "string",
+      "enum": [
+        "impl",
+        "tdd",
+        "custom"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issue_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "custom_contract_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "estimate_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "artifact_path"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "approved",
+            "rejected",
+            "pending"
+          ]
+        },
+        "artifact_path": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "mismatch_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "head_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "base_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/adapter-error.schema.json"
+      }
+    }
+  }
+}

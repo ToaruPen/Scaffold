@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scaffold.local/schemas/common/adapter-error.schema.json",
+  "title": "AdapterError",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "code",
+    "message",
+    "retryable",
+    "provider"
+  ],
+  "properties": {
+    "code": {
+      "type": "string",
+      "enum": [
+        "E_INPUT_INVALID",
+        "E_SCOPE_LOCK_FAILED",
+        "E_ADAPTER_UNAVAILABLE",
+        "E_PROVIDER_FAILURE",
+        "E_TIMEOUT",
+        "E_RATE_LIMIT",
+        "E_AUTH"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "provider": {
+      "type": "string",
+      "minLength": 1
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

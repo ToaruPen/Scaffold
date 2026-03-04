@@ -1,13 +1,31 @@
 # Epic Template
 
+## Meta
+- Created: YYYY-MM-DD
+- Author: @handle
+- Status: Draft
+- Linked PRD:
+
+## Overview
+
 ## Scope
+### Included
+-
 
-## Included
+### Excluded
+-
 
-## Excluded
-
-## Milestones
-
-## Acceptance Criteria
+## Issues
+| ID | Title | Goal | Owner | Status |
+|---|---|---|---|---|
+| #1 |  |  |  | Todo |
 
 ## Dependencies
+- External:
+- Internal:
+
+## Definition of Done
+- [ ]
+
+## Acceptance Criteria
+- [ ]

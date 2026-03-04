@@ -144,6 +144,40 @@ command_tiers:
             self.assertEqual(exit_code, 2)
             self.assertFalse((output_root / "claude.commands.json").exists())
 
+    def test_fails_on_malformed_manifest_yaml(self) -> None:
+        manifest_text = """\
+must_command_contracts:
+  /create-pr:
+    requires: [pr-open-preconditions]
+command_tiers:
+  /create-pr: core
+  broken: [
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            manifest_path = tmp_path / "manifest.yaml"
+            output_root = tmp_path / "out"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            argv = [
+                "generate_command_surfaces.py",
+                "--manifest",
+                str(manifest_path),
+                "--output-root",
+                str(output_root),
+                "--agent",
+                "claude",
+            ]
+
+            with patch.object(sys, "argv", argv):
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    exit_code = self.script.main()
+
+            self.assertEqual(exit_code, 2)
+            self.assertFalse((output_root / "claude.commands.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

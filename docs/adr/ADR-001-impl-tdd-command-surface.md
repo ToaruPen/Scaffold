@@ -7,7 +7,7 @@
 Keep `/impl` and `/tdd` as separate command surfaces in v1
 
 ## Status
-- Accepted
+- accepted
 
 ## Context
 

@@ -53,6 +53,8 @@ def _load_manifest(manifest_path: Path) -> dict[str, Any]:
         data = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     except OSError as exc:
         raise ValueError(f"failed to read manifest: {exc}") from exc
+    except yaml.YAMLError as exc:
+        raise ValueError(f"failed to parse manifest YAML: {exc}") from exc
     if not isinstance(data, dict):
         raise ValueError("manifest root must be a mapping")
     return data

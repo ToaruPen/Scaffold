@@ -142,6 +142,7 @@ command_tiers:
                     exit_code = self.script.main()
 
             self.assertEqual(exit_code, 2)
+            self.assertIn("must_command_contracts missing tier classification", stderr.getvalue())
             self.assertFalse((output_root / "claude.commands.json").exists())
 
     def test_fails_on_malformed_manifest_yaml(self) -> None:
@@ -176,6 +177,7 @@ command_tiers:
                     exit_code = self.script.main()
 
             self.assertEqual(exit_code, 2)
+            self.assertIn("failed to parse manifest YAML", stderr.getvalue())
             self.assertFalse((output_root / "claude.commands.json").exists())
 
     def test_fails_when_command_tier_key_is_non_string(self) -> None:

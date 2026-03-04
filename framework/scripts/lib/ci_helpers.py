@@ -59,6 +59,20 @@ def run_command(
             stdout=stdout_text,
             stderr=stderr_text,
         )
+    except FileNotFoundError as exc:
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=127,
+            stdout=_stream_to_text(getattr(exc, "stdout", None)),
+            stderr=f"executable not found: {exc}",
+        )
+    except PermissionError as exc:
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=126,
+            stdout=_stream_to_text(getattr(exc, "stdout", None)),
+            stderr=f"permission denied: {exc}",
+        )
     except subprocess.SubprocessError as exc:
         return subprocess.CompletedProcess(
             args=command,

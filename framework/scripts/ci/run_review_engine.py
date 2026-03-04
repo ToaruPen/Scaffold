@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import traceback
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -488,107 +489,151 @@ def main() -> int:
         engine=config.engine,
     )
 
-    instructions, focus_paths = _load_prompt_template(repo_root / config.prompt_template)
-    prompt_text = _render_prompt(
-        instructions=instructions,
-        focus_paths=focus_paths,
-        context=context,
-    )
-    (intermediate_dir / "prompt.txt").write_text(prompt_text, encoding="utf-8")
-
+    prompt_path = intermediate_dir / "prompt.txt"
     raw_output_path = intermediate_dir / "raw-output.txt"
-    raw_text = _run_engine(
-        config=config,
-        repo_root=repo_root,
-        prompt_text=prompt_text,
-        raw_output_path=raw_output_path,
-    )
-
-    extracted = _extract_review_json(raw_text)
-    normalized = _normalize_review(
-        payload=extracted,
-        context=context,
-    )
-    _write_json(review_json_path, normalized)
-
-    _validate_schema(repo_root, repo_root / config.canonical_schema, review_json_path)
-
     review_cycle_input = intermediate_dir / "review-cycle.input.json"
     review_cycle_result = output_dir / "review-cycle.result.json"
-    review_cycle_artifact = context.artifact_path
-    _write_json(
-        review_cycle_input,
-        _build_gate_input(
-            artifact_path=review_cycle_artifact,
-            review_payload=normalized,
-            context=context,
-        ),
-    )
-    cycle_exit = _run_gate(
-        repo_root=repo_root,
-        gate_script=repo_root / "framework/scripts/gates/validate_review_cycle.py",
-        input_path=review_cycle_input,
-        output_path=review_cycle_result,
-    )
-
     review_evidence_input = intermediate_dir / "review-evidence.input.json"
     review_evidence_result = output_dir / "review-evidence.result.json"
-    review_evidence_artifact = _relative_path(repo_root, review_evidence_result)
-    _write_json(
-        review_evidence_input,
-        _build_gate_input(
-            artifact_path=review_evidence_artifact,
-            review_payload=normalized,
+
+    try:
+        instructions, focus_paths = _load_prompt_template(repo_root / config.prompt_template)
+        prompt_text = _render_prompt(
+            instructions=instructions,
+            focus_paths=focus_paths,
             context=context,
-        ),
-    )
-    evidence_exit = _run_gate(
-        repo_root=repo_root,
-        gate_script=repo_root / "framework/scripts/gates/validate_review_evidence.py",
-        input_path=review_evidence_input,
-        output_path=review_evidence_result,
-        policy_path=repo_root / config.policy_path,
-    )
+        )
+        prompt_path.write_text(prompt_text, encoding="utf-8")
 
-    metadata = {
-        "engine": config.engine,
-        "scope_id": config.scope_id,
-        "run_id": config.run_id,
-        "request_id": request_id,
-        "head_sha": head_sha,
-        "base_ref": config.base_ref,
-        "base_sha": base_sha,
-        "run_dir": _relative_path(repo_root, run_dir),
-        "output_dir": _relative_path(repo_root, output_dir),
-        "intermediate_dir": _relative_path(repo_root, intermediate_dir),
-        "review_json": artifact_path,
-        "review_cycle_result": _relative_path(repo_root, review_cycle_result),
-        "review_evidence_result": _relative_path(repo_root, review_evidence_result),
-        "review_cycle_input": _relative_path(repo_root, review_cycle_input),
-        "review_evidence_input": _relative_path(repo_root, review_evidence_input),
-        "raw_output": _relative_path(repo_root, raw_output_path),
-        "prompt": _relative_path(repo_root, intermediate_dir / "prompt.txt"),
-        "review_cycle_exit_code": cycle_exit,
-        "review_evidence_exit_code": evidence_exit,
-        "configured_model": (
-            config.codex_model if config.engine == "codex" else config.claude_model
-        ),
-        "configured_effort": (
-            config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
-        ),
-        "entrypoints": {
-            "primary_review": _relative_path(repo_root, review_json_path),
-            "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),
-            "review_evidence_gate_result": _relative_path(repo_root, review_evidence_result),
-        },
-    }
-    _write_json(output_dir / "index.json", metadata)
-    _write_json(output_dir / "run-metadata.json", metadata)
+        raw_text = _run_engine(
+            config=config,
+            repo_root=repo_root,
+            prompt_text=prompt_text,
+            raw_output_path=raw_output_path,
+        )
 
-    print(json.dumps(metadata, ensure_ascii=True, indent=2, sort_keys=True))
-    if cycle_exit == 0 and evidence_exit == 0:
-        return 0
-    return 2
+        extracted = _extract_review_json(raw_text)
+        normalized = _normalize_review(
+            payload=extracted,
+            context=context,
+        )
+        _write_json(review_json_path, normalized)
+
+        _validate_schema(repo_root, repo_root / config.canonical_schema, review_json_path)
+
+        review_cycle_artifact = context.artifact_path
+        _write_json(
+            review_cycle_input,
+            _build_gate_input(
+                artifact_path=review_cycle_artifact,
+                review_payload=normalized,
+                context=context,
+            ),
+        )
+        cycle_exit = _run_gate(
+            repo_root=repo_root,
+            gate_script=repo_root / "framework/scripts/gates/validate_review_cycle.py",
+            input_path=review_cycle_input,
+            output_path=review_cycle_result,
+        )
+
+        review_evidence_artifact = _relative_path(repo_root, review_evidence_result)
+        _write_json(
+            review_evidence_input,
+            _build_gate_input(
+                artifact_path=review_evidence_artifact,
+                review_payload=normalized,
+                context=context,
+            ),
+        )
+        evidence_exit = _run_gate(
+            repo_root=repo_root,
+            gate_script=repo_root / "framework/scripts/gates/validate_review_evidence.py",
+            input_path=review_evidence_input,
+            output_path=review_evidence_result,
+            policy_path=repo_root / config.policy_path,
+        )
+
+        metadata = {
+            "engine": config.engine,
+            "scope_id": config.scope_id,
+            "run_id": config.run_id,
+            "request_id": request_id,
+            "head_sha": head_sha,
+            "base_ref": config.base_ref,
+            "base_sha": base_sha,
+            "run_dir": _relative_path(repo_root, run_dir),
+            "output_dir": _relative_path(repo_root, output_dir),
+            "intermediate_dir": _relative_path(repo_root, intermediate_dir),
+            "review_json": artifact_path,
+            "review_cycle_result": _relative_path(repo_root, review_cycle_result),
+            "review_evidence_result": _relative_path(repo_root, review_evidence_result),
+            "review_cycle_input": _relative_path(repo_root, review_cycle_input),
+            "review_evidence_input": _relative_path(repo_root, review_evidence_input),
+            "raw_output": _relative_path(repo_root, raw_output_path),
+            "prompt": _relative_path(repo_root, prompt_path),
+            "review_cycle_exit_code": cycle_exit,
+            "review_evidence_exit_code": evidence_exit,
+            "configured_model": (
+                config.codex_model if config.engine == "codex" else config.claude_model
+            ),
+            "configured_effort": (
+                config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
+            ),
+            "entrypoints": {
+                "primary_review": _relative_path(repo_root, review_json_path),
+                "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),
+                "review_evidence_gate_result": _relative_path(repo_root, review_evidence_result),
+            },
+        }
+        _write_json(output_dir / "index.json", metadata)
+        _write_json(output_dir / "run-metadata.json", metadata)
+
+        print(json.dumps(metadata, ensure_ascii=True, indent=2, sort_keys=True))
+        if cycle_exit == 0 and evidence_exit == 0:
+            return 0
+        return 2
+    except Exception as exc:
+        traceback.print_exc()
+        failure_metadata = {
+            "engine": config.engine,
+            "scope_id": config.scope_id,
+            "run_id": config.run_id,
+            "request_id": request_id,
+            "head_sha": head_sha,
+            "base_ref": config.base_ref,
+            "base_sha": base_sha,
+            "run_dir": _relative_path(repo_root, run_dir),
+            "output_dir": _relative_path(repo_root, output_dir),
+            "intermediate_dir": _relative_path(repo_root, intermediate_dir),
+            "review_json": artifact_path,
+            "review_cycle_result": _relative_path(repo_root, review_cycle_result),
+            "review_evidence_result": _relative_path(repo_root, review_evidence_result),
+            "review_cycle_input": _relative_path(repo_root, review_cycle_input),
+            "review_evidence_input": _relative_path(repo_root, review_evidence_input),
+            "raw_output": _relative_path(repo_root, raw_output_path),
+            "prompt": _relative_path(repo_root, prompt_path),
+            "review_cycle_exit_code": 2,
+            "review_evidence_exit_code": 2,
+            "status": "error",
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
+            "configured_model": (
+                config.codex_model if config.engine == "codex" else config.claude_model
+            ),
+            "configured_effort": (
+                config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
+            ),
+            "entrypoints": {
+                "primary_review": _relative_path(repo_root, review_json_path),
+                "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),
+                "review_evidence_gate_result": _relative_path(repo_root, review_evidence_result),
+            },
+        }
+        _write_json(output_dir / "index.json", failure_metadata)
+        _write_json(output_dir / "run-metadata.json", failure_metadata)
+        print(json.dumps(failure_metadata, ensure_ascii=True, indent=2, sort_keys=True))
+        return 2
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -19,13 +20,19 @@ class DriftAdrGateConfig:
 
 
 def _collect_changed_paths(repo_root: Path, base_ref: str) -> list[str]:
+    command = ["git", "diff", "--name-only", f"{base_ref}...HEAD"]
     result = run_command(
-        ["git", "diff", "--name-only", f"{base_ref}...HEAD"],
+        command,
         cwd=repo_root,
         timeout_sec=60,
     )
     if result.returncode != 0:
-        return []
+        raise subprocess.CalledProcessError(
+            result.returncode,
+            command,
+            output=result.stdout,
+            stderr=result.stderr,
+        )
     lines = [line.strip() for line in result.stdout.splitlines()]
     return [line for line in lines if line]
 
@@ -82,7 +89,7 @@ def _resolve_existing_path(
 def _read_json_object(path: Path) -> dict[str, Any] | None:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except (json.JSONDecodeError, OSError):
         return None
     if not isinstance(payload, dict):
         return None

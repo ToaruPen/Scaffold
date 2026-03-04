@@ -200,6 +200,51 @@ class RunReviewEngineTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 2)
 
+    def test_main_writes_failure_metadata_when_exception_occurs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            argv = [
+                "run_review_engine.py",
+                "--engine",
+                "codex",
+                "--scope-id",
+                "issue-15",
+                "--run-id",
+                "run-test-exception",
+                "--base-ref",
+                "main",
+                "--prompt-template",
+                str(PROMPT_TEMPLATE),
+                "--results-dir",
+                ".scaffold/review_results",
+            ]
+
+            with (
+                patch.object(self.runner, "_git_short_sha", side_effect=["abc1234", "def5678"]),
+                patch.object(self.runner, "_run_engine", side_effect=RuntimeError("engine boom")),
+                patch.object(sys, "argv", argv),
+            ):
+                old_cwd = Path.cwd()
+                os.chdir(tmp_path)
+                try:
+                    exit_code = self.runner.main()
+                finally:
+                    os.chdir(old_cwd)
+
+            self.assertEqual(exit_code, 2)
+            output_dir = (
+                tmp_path
+                / ".scaffold/review_results/issue-15/run-test-exception/review-cycle/outputs"
+            )
+            self.assertTrue((output_dir / "index.json").exists())
+            self.assertTrue((output_dir / "run-metadata.json").exists())
+
+            payload = json.loads((output_dir / "index.json").read_text(encoding="utf-8"))
+            self.assertEqual(payload["status"], "error")
+            self.assertEqual(payload["review_cycle_exit_code"], 2)
+            self.assertEqual(payload["review_evidence_exit_code"], 2)
+            self.assertIn("engine boom", payload["error"])
+
     def test_main_fail_fast_when_head_or_base_sha_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             argv = [

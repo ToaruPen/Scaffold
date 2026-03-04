@@ -22,8 +22,13 @@
 | #1 |  |  |  | Todo |
 
 ## Dependencies
-- External:
-- Internal:
+### External
+- <dependency-name>: <short description>
+- <dependency-name>: <short description>
+
+### Internal
+- <module-or-team>: <short description>
+- <module-or-team>: <short description>
 
 ## Definition of Done
 - [ ]

@@ -946,7 +946,7 @@ Max Concurrent: 5 (Wave 3)
   - [x] manifest.yamlに drift-detection 契約が追加され status: implemented
 
   **QA Scenarios:**
-  Scenario: 季言と実際が一致でpass
+  Scenario: 宣言と実際が一致でpass
     Tool: Bash
     Steps: declared=["src/auth/"], actual=["src/auth/login.py"] でvalidator実行
     Expected: exit 0, status=pass, undeclared_additions=[]

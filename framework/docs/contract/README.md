@@ -9,6 +9,7 @@ This directory defines hard gate contracts distributed to consumer repositories.
 - Exception handling expectations
 - Adapter interface contracts (`review_engine`, `vcs`, `bot`)
 - Command-to-contract mapping source (`framework/scripts/manifest.yaml`)
+- Command tier classification source (`framework/scripts/manifest.yaml`)
 
 ## Primary Documents
 

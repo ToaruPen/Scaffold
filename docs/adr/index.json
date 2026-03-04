@@ -1,0 +1,10 @@
+{
+  "entries": [
+    {
+      "adr_id": "ADR-001",
+      "title": "Keep /impl and /tdd as separate command surfaces in v1",
+      "status": "accepted",
+      "file_path": "docs/adr/ADR-001-impl-tdd-command-surface.md"
+    }
+  ]
+}

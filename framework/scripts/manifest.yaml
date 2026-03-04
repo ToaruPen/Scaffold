@@ -172,6 +172,22 @@ must_command_contracts:
     requires:
       - waiver-exception
 
+command_tiers:
+  /research: core
+  /create-prd: core
+  /create-epic: core
+  /create-issues: core
+  /estimation: core
+  /impl: core
+  /tdd: core
+  /worktree: core
+  /test-review: core
+  /review-cycle: core
+  /final-review: core
+  /create-pr: core
+  /pr-bots-review: conditional
+  /waiver: conditional
+
 adapter_interfaces:
   review_engine:
     contract_doc: framework/docs/contract/adapter-interfaces.md#review-engine-adapter

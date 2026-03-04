@@ -1,4 +1,4 @@
-.PHONY: install-dev lint format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range
+.PHONY: install-dev lint format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range command-surfaces command-surfaces-conditional
 
 install-dev:
 	python3 -m pip install -r requirements-dev.txt
@@ -20,8 +20,15 @@ schema-check:
 
 test:
 	python3 -m unittest discover -s tests/framework -p "test_*.py"
+	python3 -m unittest discover -s tests/tooling -p "test_*.py"
 
 verify: lint format-check typecheck schema-check test
+
+command-surfaces:
+	python3 tooling/sync/generate_command_surfaces.py --output-root tooling/sync/generated/default --agent all
+
+command-surfaces-conditional:
+	python3 tooling/sync/generate_command_surfaces.py --output-root tooling/sync/generated/with-conditional --agent all --enable-conditional
 
 pre-commit:
 	pre-commit run --all-files

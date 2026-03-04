@@ -31,3 +31,38 @@ git subtree pull --prefix=.scaffold <scaffold-remote> framework-dist --squash
 - Use `--squash` to keep consumer history clean.
 - Keep all distributable assets under `framework/` only.
 - Avoid mixing local customizations directly inside `.scaffold/`; extend via overlay files.
+
+## Agent Command Surface Sync
+
+Use the command surface generator to produce per-agent command inventories from
+`framework/scripts/manifest.yaml`.
+
+```bash
+python3 tooling/sync/generate_command_surfaces.py
+```
+
+Or via Make targets:
+
+```bash
+make command-surfaces
+make command-surfaces-conditional
+```
+
+Default behavior:
+
+- include `core` tier commands
+- exclude `conditional` tier commands
+
+Enable conditional commands explicitly:
+
+```bash
+python3 tooling/sync/generate_command_surfaces.py --enable-conditional
+```
+
+Output profiles:
+
+- default (`core` only): `tooling/sync/generated/default/`
+- with conditional (`core` + `conditional`): `tooling/sync/generated/with-conditional/`
+
+When `--output-root` is omitted, the script chooses the profile directory
+automatically (`default` without `--enable-conditional`, `with-conditional` with it).

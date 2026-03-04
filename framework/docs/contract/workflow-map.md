@@ -26,6 +26,14 @@ This map is the primary entry point for agents and maintainers.
 - Do not preload all command docs.
 - If a gate fails, load only related gate contract docs and retry.
 
+## Command Tier Policy
+
+- Command tier source of truth is `framework/scripts/manifest.yaml` (`command_tiers`).
+- `core` commands are always in the default execution surface.
+- `conditional` commands are enabled only when the repository explicitly opts in for that capability.
+- Any command listed in `must_command_contracts` must be classified as `core` or `conditional`.
+- Commands outside `command_tiers` are out of scope for Scaffold's distributable command surface.
+
 ## Required Evidence by Phase
 
 - Requirement phase: PRD/Epic artifacts

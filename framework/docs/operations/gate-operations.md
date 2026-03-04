@@ -20,6 +20,7 @@ The source of truth is `framework/scripts/manifest.yaml`.
 
 - Contract definitions: `contracts:`
 - Command mapping: `must_command_contracts:`
+- Command tiers: `command_tiers:` (`core` / `conditional`)
 - Adapter boundaries: `adapter_interfaces:`
 
 ## Validator Execution Pattern

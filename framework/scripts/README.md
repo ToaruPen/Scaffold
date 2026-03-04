@@ -17,6 +17,14 @@ Distributable script layer for consumer repositories.
 - Do not put policy prose in validator scripts.
 - Add matching tests under `tests/framework/` for every behavior change.
 
+## Contract Inventory
+
+`framework/scripts/manifest.yaml` is the executable source of truth for:
+
+- `contracts`: gate definitions and validator bindings
+- `must_command_contracts`: command-to-contract requirements
+- `command_tiers`: command execution surface classification (`core` / `conditional`)
+
 ## Adapter Stubs
 
 - `framework/scripts/lib/review_engine_stub.py`

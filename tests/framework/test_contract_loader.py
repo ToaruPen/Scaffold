@@ -68,7 +68,8 @@ class ContractLoaderTests(unittest.TestCase):
         contract = find_contract(manifest, "adr-index-consistency")
 
         self.assertIsNotNone(contract)
-        assert contract is not None
+        if contract is None:
+            self.fail("contract lookup unexpectedly returned None")
         self.assertEqual(contract["validator"], "b.py")
 
     def test_required_contracts_for_command_returns_trimmed_values(self) -> None:

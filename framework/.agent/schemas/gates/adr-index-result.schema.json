@@ -45,7 +45,13 @@
           "issue_url": {"type": "string", "minLength": 1, "format": "uri"},
           "supersedes": {
             "type": "array",
-            "items": {"type": "string", "minLength": 1}
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^ADR-\\d{3,}$",
+              "description": "ADR identifier like ADR-001",
+              "examples": ["ADR-001", "ADR-123"]
+            }
           }
         }
       }

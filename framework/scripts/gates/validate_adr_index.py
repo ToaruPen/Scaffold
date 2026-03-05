@@ -10,6 +10,15 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from framework.scripts.lib.adr_markdown_helpers import (
+    _extract_issue_url,
+    _extract_markdown_sections,
+    _extract_supersedes,
+    _first_matching_section_text,
+    _first_section_value,
+    _first_section_with_prefix,
+    _normalize_adr_id,
+)
 from framework.scripts.lib.exit_codes import EXIT_SUCCESS, EXIT_VALIDATION_FAILED
 from framework.scripts.lib.gate_helpers import (
     error_dict,
@@ -22,11 +31,7 @@ from framework.scripts.lib.gate_helpers import (
 
 _DECISIONS_HEADER = ["ADR ID", "Title", "Decision Summary", "Issue", "ADR Path"]
 _DECISIONS_COLS = len(_DECISIONS_HEADER)
-_SUPERSEDES_ADR_ID_RE = re.compile(r"ADR-\d+", re.IGNORECASE)
-
-
-def _normalize_adr_id(value: str) -> str:
-    return value.strip().upper()
+_ADR_ID_FULL_RE = re.compile(r"^ADR-\d{3,}$")
 
 
 def _optional_list_of_texts(obj: dict[str, Any], key: str, parent: str = "") -> list[str] | None:
@@ -70,74 +75,10 @@ def _resolve_adr_file_path(repo_root: Path, file_path: str) -> Path | None:
     return resolved_candidate
 
 
-def _extract_markdown_sections(text: str) -> dict[str, str]:
-    sections: dict[str, str] = {}
-    current: str | None = None
-    buffer: list[str] = []
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if line.startswith("## "):
-            if current is not None:
-                sections[current] = "\n".join(buffer)
-            current = line[3:].strip().lower()
-            buffer = []
-            continue
-        if current is not None:
-            buffer.append(raw_line)
-    if current is not None:
-        sections[current] = "\n".join(buffer)
-    return sections
-
-
-def _first_section_value(text: str) -> str | None:
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        if line.startswith("-"):
-            line = line[1:].strip()
-        if line:
-            return line
-    return None
-
-
-def _extract_issue_reference(text: str) -> str | None:
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        if line.startswith("-"):
-            line = line[1:].strip()
-        if not line.lower().startswith("issue:"):
-            continue
-        value = line.split(":", 1)[1].strip()
-        if value:
-            return value
-    return None
-
-
-def _first_matching_section_text(sections: dict[str, str], keys: list[str]) -> str:
-    for key in keys:
-        if key in sections:
-            return sections[key]
-    return ""
-
-
-def _first_section_with_prefix(sections: dict[str, str], prefix: str) -> str:
-    for key, value in sections.items():
-        if key.startswith(prefix):
-            return value
-    return ""
-
-
-def _extract_supersedes_values(text: str) -> list[str]:
-    values: list[str] = []
-    for raw_line in text.splitlines():
-        for match in _SUPERSEDES_ADR_ID_RE.findall(raw_line):
-            normalized = _normalize_adr_id(match)
-            if normalized and normalized not in values:
-                values.append(normalized)
-    return values
+def _validate_adr_id_format(value: str, parent: str) -> str:
+    if _ADR_ID_FULL_RE.match(value) is None:
+        raise ValueError(f"invalid ADR ID format: {parent}: {value}")
+    return value
 
 
 def _load_adr_metadata(path: Path) -> dict[str, Any] | None:
@@ -154,8 +95,8 @@ def _load_adr_metadata(path: Path) -> dict[str, Any] | None:
     decision_summary = _first_section_value(
         _first_matching_section_text(sections, ["decision summary", "decision"])
     )
-    issue_url = _extract_issue_reference(sections.get("references", ""))
-    supersedes = _extract_supersedes_values(_first_section_with_prefix(sections, "supersedes"))
+    issue_url = _extract_issue_url(sections.get("references", ""))
+    supersedes = _extract_supersedes(_first_section_with_prefix(sections, "supersedes"))
     if (
         adr_id is None
         or title is None
@@ -166,8 +107,13 @@ def _load_adr_metadata(path: Path) -> dict[str, Any] | None:
     ):
         return None
 
+    try:
+        normalized_adr_id = _validate_adr_id_format(_normalize_adr_id(adr_id), f"adr body {path}")
+    except ValueError:
+        return None
+
     return {
-        "adr_id": _normalize_adr_id(adr_id),
+        "adr_id": normalized_adr_id,
         "title": title,
         "status": status.lower(),
         "date": date,
@@ -199,10 +145,14 @@ def _parse_decisions_rows(
     lines: list[str], start: int
 ) -> tuple[dict[str, dict[str, str]] | None, str | None]:
     values: dict[str, dict[str, str]] = {}
+    parsed_table_rows = False
     for line in lines[start:]:
         row = _parse_table_row(line)
         if row is None:
+            if parsed_table_rows:
+                break
             continue
+        parsed_table_rows = True
         if len(row) != _DECISIONS_COLS:
             return None, "decisions_index_invalid"
 
@@ -246,8 +196,12 @@ def _load_decisions_index(path: Path) -> tuple[dict[str, dict[str, str]] | None,
 
 
 def _parse_index_entry(entry: dict[str, Any], parent: str) -> dict[str, Any]:
+    normalized_adr_id = _validate_adr_id_format(
+        _normalize_adr_id(require_text(entry, "adr_id", parent)),
+        f"{parent}.adr_id",
+    )
     parsed: dict[str, Any] = {
-        "adr_id": _normalize_adr_id(require_text(entry, "adr_id", parent)),
+        "adr_id": normalized_adr_id,
         "title": require_text(entry, "title", parent),
         "status": require_text(entry, "status", parent),
         "date": require_text(entry, "date", parent),
@@ -257,7 +211,14 @@ def _parse_index_entry(entry: dict[str, Any], parent: str) -> dict[str, Any]:
     }
     supersedes = _optional_list_of_texts(entry, "supersedes", parent)
     if supersedes:
-        parsed["supersedes"] = [_normalize_adr_id(item) for item in supersedes]
+        normalized_supersedes: list[str] = []
+        for index, item in enumerate(supersedes):
+            normalized = _validate_adr_id_format(
+                _normalize_adr_id(item),
+                f"{parent}.supersedes[{index}]",
+            )
+            normalized_supersedes.append(normalized)
+        parsed["supersedes"] = normalized_supersedes
     return parsed
 
 

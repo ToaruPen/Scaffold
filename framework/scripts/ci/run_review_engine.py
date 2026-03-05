@@ -298,6 +298,13 @@ def _relative_path(repo_root: Path, path: Path) -> str:
     return _ci_relative_path(repo_root, path)
 
 
+def _optional_relative_path(repo_root: Path, path: Path | None) -> str | None:
+    if path is None:
+        return None
+    candidate = path if path.is_absolute() else repo_root / path
+    return _relative_path(repo_root, candidate)
+
+
 def _run_gate(
     *,
     repo_root: Path,
@@ -602,6 +609,10 @@ def main() -> int:
             "configured_effort": (
                 config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
             ),
+            "declared_targets_file": _optional_relative_path(
+                repo_root, config.declared_targets_file
+            ),
+            "adr_index_file": _optional_relative_path(repo_root, config.adr_index_file),
             "entrypoints": {
                 "primary_review": _relative_path(repo_root, review_json_path),
                 "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),
@@ -646,6 +657,10 @@ def main() -> int:
             "configured_effort": (
                 config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
             ),
+            "declared_targets_file": _optional_relative_path(
+                repo_root, config.declared_targets_file
+            ),
+            "adr_index_file": _optional_relative_path(repo_root, config.adr_index_file),
             "entrypoints": {
                 "primary_review": _relative_path(repo_root, review_json_path),
                 "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),

@@ -29,5 +29,4 @@
 - ADR-XXXX
 
 ## References
-- Epic:
 - Issue: https://github.com/<org>/<repo>/issues/<number>

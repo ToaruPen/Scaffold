@@ -91,6 +91,12 @@ class SyncAdrIndexTests(unittest.TestCase):
                 index_payload["entries"][0]["decision_summary"],
                 "Keep core commands explicit.",
             )
+            expected_file_path = adr_file.resolve().relative_to(REPO_ROOT.resolve()).as_posix()
+            self.assertEqual(
+                index_payload["entries"][0]["file_path"],
+                expected_file_path,
+            )
+            self.assertEqual(index_payload["entries"][0]["date"], "2026-03-05")
 
             decisions_text = (repo_root / "docs/decisions.md").read_text(encoding="utf-8")
             self.assertIn("| ADR-001 |", decisions_text)

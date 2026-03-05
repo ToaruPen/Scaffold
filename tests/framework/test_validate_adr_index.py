@@ -647,6 +647,77 @@ class ValidateAdrIndexTests(unittest.TestCase):
         body = json.loads(result.stdout)
         self.assertEqual(body["errors"][0]["code"], "E_INPUT_INVALID")
 
+    def test_fails_when_index_adr_id_has_invalid_format(self) -> None:
+        payload = {
+            "request_id": "req-adr-14",
+            "scope_id": "issue-14",
+            "run_id": "run-14",
+            "artifact_path": "docs/adr/index.json",
+            "adr_index": {
+                "entries": [
+                    {
+                        "adr_id": "ADR-XX",
+                        "title": "Invalid ADR ID",
+                        "status": "accepted",
+                        "date": "2026-03-05",
+                        "file_path": "docs/adr/ADR-001.md",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/issues/1",
+                    }
+                ]
+            },
+        }
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["errors"][0]["code"], "E_INPUT_INVALID")
+
+    def test_fails_with_adr_metadata_missing_when_body_adr_id_invalid(self) -> None:
+        with tempfile.TemporaryDirectory() as repo_tmp:
+            repo_root = Path(repo_tmp)
+            _write_adr(
+                repo_root / "docs/adr/ADR-050.md",
+                adr_id="ADR-XX",
+                title="Body Invalid ADR ID",
+                status="accepted",
+            )
+            _write_decisions_index(
+                repo_root / "docs/decisions.md",
+                [
+                    {
+                        "adr_id": "ADR-050",
+                        "title": "Body Invalid ADR ID",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/issues/1",
+                        "file_path": "docs/adr/ADR-050.md",
+                    }
+                ],
+            )
+            payload = {
+                "request_id": "req-adr-15",
+                "scope_id": "issue-14",
+                "run_id": "run-15",
+                "artifact_path": "docs/adr/index.json",
+                "adr_index": {
+                    "entries": [
+                        {
+                            "adr_id": "ADR-050",
+                            "title": "Body Invalid ADR ID",
+                            "status": "accepted",
+                            "date": "2026-03-05",
+                            "file_path": "docs/adr/ADR-050.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
+                        }
+                    ]
+                },
+            }
+            result = self._run(payload, cwd=repo_root)
+            self.assertEqual(result.returncode, 2)
+            body = json.loads(result.stdout)
+            self.assertEqual(body["request_id"], "req-adr-15")
+            self.assertIn("adr_metadata_missing", body["mismatch_reasons"])
+
 
 if __name__ == "__main__":
     unittest.main()

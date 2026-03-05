@@ -31,6 +31,6 @@ Define deterministic ADR maintenance rules for `docs/adr/index.json` and `docs/d
 
 - A superseding ADR sets `Status` to `accepted` (or project-approved final state).
 - The superseded ADR sets `Status` to `superseded`.
-- The superseding ADR should include `## Supersedes (Optional)` with one or more `ADR-XXXX` references.
+- The superseding ADR should include `## Supersedes (Optional)` with one or more `ADR-001`-style references.
 - `sync_adr_index.py` exports `supersedes` into `docs/adr/index.json` when present.
 - `docs/decisions.md` remains generated from ADR bodies and must not be hand-edited.

@@ -305,6 +305,13 @@ def _optional_relative_path(repo_root: Path, path: Path | None) -> str | None:
     return _relative_path(repo_root, candidate)
 
 
+def _build_optional_metadata(config: RunnerConfig, repo_root: Path) -> dict[str, str | None]:
+    return {
+        "declared_targets_file": _optional_relative_path(repo_root, config.declared_targets_file),
+        "adr_index_file": _optional_relative_path(repo_root, config.adr_index_file),
+    }
+
+
 def _run_gate(
     *,
     repo_root: Path,
@@ -609,10 +616,7 @@ def main() -> int:
             "configured_effort": (
                 config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
             ),
-            "declared_targets_file": _optional_relative_path(
-                repo_root, config.declared_targets_file
-            ),
-            "adr_index_file": _optional_relative_path(repo_root, config.adr_index_file),
+            **_build_optional_metadata(config, repo_root),
             "entrypoints": {
                 "primary_review": _relative_path(repo_root, review_json_path),
                 "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),
@@ -657,10 +661,7 @@ def main() -> int:
             "configured_effort": (
                 config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
             ),
-            "declared_targets_file": _optional_relative_path(
-                repo_root, config.declared_targets_file
-            ),
-            "adr_index_file": _optional_relative_path(repo_root, config.adr_index_file),
+            **_build_optional_metadata(config, repo_root),
             "entrypoints": {
                 "primary_review": _relative_path(repo_root, review_json_path),
                 "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),

@@ -107,8 +107,16 @@ def collect_adr_records(repo_root: Path, adr_dir: Path) -> list[AdrRecord]:
         ) from exc
 
     records: list[AdrRecord] = []
+    seen_by_id: dict[str, str] = {}
     for path in sorted(resolved_adr_dir.rglob("ADR-*.md")):
-        records.append(load_adr_record(repo_root, path))
+        record = load_adr_record(repo_root, path)
+        first_path = seen_by_id.get(record.adr_id)
+        if first_path is not None:
+            raise ValueError(
+                f"duplicate ADR ID detected: {record.adr_id} in {first_path} and {record.file_path}"
+            )
+        seen_by_id[record.adr_id] = record.file_path
+        records.append(record)
     records.sort(key=_sort_key)
     return records
 

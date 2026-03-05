@@ -133,6 +133,12 @@ def _load_adr_metadata(path: Path) -> dict[str, Any] | None:
         return None
 
     try:
+        normalized_date = _validate_date_format(date, f"adr body {path}")
+        normalized_issue_url = _validate_issue_url_format(issue_url, f"adr body {path}")
+    except ValueError:
+        return None
+
+    try:
         normalized_adr_id = _validate_adr_id_format(_normalize_adr_id(adr_id), f"adr body {path}")
     except ValueError:
         return None
@@ -141,9 +147,9 @@ def _load_adr_metadata(path: Path) -> dict[str, Any] | None:
         "adr_id": normalized_adr_id,
         "title": title,
         "status": status.lower(),
-        "date": date,
+        "date": normalized_date,
         "decision_summary": decision_summary,
-        "issue_url": issue_url,
+        "issue_url": normalized_issue_url,
         "supersedes": supersedes,
     }
 

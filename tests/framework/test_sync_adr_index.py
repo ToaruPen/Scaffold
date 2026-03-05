@@ -11,6 +11,41 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "framework/scripts/ci/sync_adr_index.py"
 
 
+def _run_sync(
+    *,
+    repo_root: Path,
+    adr_dir: Path,
+    index_path: Path,
+    decisions_path: Path,
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
+    run_cwd = cwd if cwd is not None else repo_root
+    try:
+        return subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--adr-dir",
+                str(adr_dir),
+                "--index-path",
+                str(index_path),
+                "--decisions-path",
+                str(decisions_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=str(run_cwd),
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout if isinstance(exc.stdout, str) else ""
+        stderr = exc.stderr if isinstance(exc.stderr, str) else ""
+        raise AssertionError(
+            f"sync_adr_index timed out; stdout={stdout!r} stderr={stderr!r}"
+        ) from exc
+
+
 class SyncAdrIndexTests(unittest.TestCase):
     def test_generates_index_and_decisions_files(self) -> None:
         with tempfile.TemporaryDirectory(dir=REPO_ROOT) as repo_tmp:
@@ -59,28 +94,12 @@ class SyncAdrIndexTests(unittest.TestCase):
             index_path = repo_root / "docs/adr/index.json"
             decisions_path = repo_root / "docs/decisions.md"
 
-            try:
-                result = subprocess.run(
-                    [
-                        sys.executable,
-                        str(SCRIPT),
-                        "--adr-dir",
-                        str(adr_dir),
-                        "--index-path",
-                        str(index_path),
-                        "--decisions-path",
-                        str(decisions_path),
-                    ],
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    cwd=str(repo_root),
-                    timeout=60,
-                )
-            except subprocess.TimeoutExpired as exc:
-                stdout = exc.stdout if isinstance(exc.stdout, str) else ""
-                stderr = exc.stderr if isinstance(exc.stderr, str) else ""
-                self.fail(f"sync_adr_index timed out; stdout={stdout!r} stderr={stderr!r}")
+            result = _run_sync(
+                repo_root=repo_root,
+                adr_dir=adr_dir,
+                index_path=index_path,
+                decisions_path=decisions_path,
+            )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
 
             index_payload = json.loads(
@@ -101,6 +120,82 @@ class SyncAdrIndexTests(unittest.TestCase):
             decisions_text = (repo_root / "docs/decisions.md").read_text(encoding="utf-8")
             self.assertIn("| ADR-001 |", decisions_text)
             self.assertIn("https://example.com/issues/1", decisions_text)
+
+    def test_fails_fast_when_duplicate_adr_id_exists(self) -> None:
+        with tempfile.TemporaryDirectory(dir=REPO_ROOT) as repo_tmp:
+            repo_root = Path(repo_tmp)
+            adr_dir = repo_root / "docs/adr"
+            adr_dir.mkdir(parents=True, exist_ok=True)
+
+            first_adr = adr_dir / "ADR-001-first.md"
+            first_adr.write_text(
+                "\n".join(
+                    [
+                        "# ADR",
+                        "",
+                        "## ADR ID",
+                        "- ADR-001",
+                        "",
+                        "## Title",
+                        "First ADR",
+                        "",
+                        "## Status",
+                        "- accepted",
+                        "",
+                        "## Date",
+                        "- 2026-03-05",
+                        "",
+                        "## Decision Summary",
+                        "First decision.",
+                        "",
+                        "## References",
+                        "- Issue: https://example.com/issues/1",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            duplicate_adr = adr_dir / "ADR-001-duplicate.md"
+            duplicate_adr.write_text(
+                "\n".join(
+                    [
+                        "# ADR",
+                        "",
+                        "## ADR ID",
+                        "- ADR-001",
+                        "",
+                        "## Title",
+                        "Duplicate ADR",
+                        "",
+                        "## Status",
+                        "- accepted",
+                        "",
+                        "## Date",
+                        "- 2026-03-05",
+                        "",
+                        "## Decision Summary",
+                        "Duplicate decision.",
+                        "",
+                        "## References",
+                        "- Issue: https://example.com/issues/2",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = _run_sync(
+                repo_root=repo_root,
+                adr_dir=adr_dir,
+                index_path=repo_root / "docs/adr/index.json",
+                decisions_path=repo_root / "docs/decisions.md",
+            )
+
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("duplicate ADR ID detected: ADR-001", result.stderr)
+            self.assertIn("ADR-001-first.md", result.stderr)
+            self.assertIn("ADR-001-duplicate.md", result.stderr)
 
     def test_rejects_non_iso_date_and_non_uri_issue(self) -> None:
         with tempfile.TemporaryDirectory(dir=REPO_ROOT) as repo_tmp:
@@ -135,22 +230,11 @@ class SyncAdrIndexTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPT),
-                    "--adr-dir",
-                    str(repo_root / "docs/adr"),
-                    "--index-path",
-                    str(repo_root / "docs/adr/index.json"),
-                    "--decisions-path",
-                    str(repo_root / "docs/decisions.md"),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-                cwd=str(repo_root),
-                timeout=60,
+            result = _run_sync(
+                repo_root=repo_root,
+                adr_dir=repo_root / "docs/adr",
+                index_path=repo_root / "docs/adr/index.json",
+                decisions_path=repo_root / "docs/decisions.md",
             )
 
             self.assertNotEqual(result.returncode, 0)
@@ -191,22 +275,11 @@ class SyncAdrIndexTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPT),
-                    "--adr-dir",
-                    str(repo_root / "docs/adr"),
-                    "--index-path",
-                    str(repo_root / "docs/adr/index.json"),
-                    "--decisions-path",
-                    str(repo_root / "docs/decisions.md"),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-                cwd=str(repo_root),
-                timeout=60,
+            result = _run_sync(
+                repo_root=repo_root,
+                adr_dir=repo_root / "docs/adr",
+                index_path=repo_root / "docs/adr/index.json",
+                decisions_path=repo_root / "docs/decisions.md",
             )
 
             self.assertNotEqual(result.returncode, 0)
@@ -248,22 +321,11 @@ class SyncAdrIndexTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPT),
-                    "--adr-dir",
-                    str(repo_root / "docs/adr"),
-                    "--index-path",
-                    str(repo_root / "docs/adr/index.json"),
-                    "--decisions-path",
-                    str(repo_root / "docs/decisions.md"),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-                cwd=str(repo_root),
-                timeout=60,
+            result = _run_sync(
+                repo_root=repo_root,
+                adr_dir=repo_root / "docs/adr",
+                index_path=repo_root / "docs/adr/index.json",
+                decisions_path=repo_root / "docs/decisions.md",
             )
 
             self.assertNotEqual(result.returncode, 0)
@@ -307,22 +369,12 @@ class SyncAdrIndexTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPT),
-                    "--adr-dir",
-                    str(outside_root / "docs/adr"),
-                    "--index-path",
-                    str(output_root / "docs/adr/index.json"),
-                    "--decisions-path",
-                    str(output_root / "docs/decisions.md"),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-                cwd=str(output_root),
-                timeout=60,
+            result = _run_sync(
+                repo_root=output_root,
+                adr_dir=outside_root / "docs/adr",
+                index_path=output_root / "docs/adr/index.json",
+                decisions_path=output_root / "docs/decisions.md",
+                cwd=output_root,
             )
 
             self.assertEqual(result.returncode, 2)

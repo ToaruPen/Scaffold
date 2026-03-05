@@ -26,7 +26,7 @@
 -
 
 ## Supersedes (Optional)
-- ADR-001
+
 
 ## References
 - Issue: https://github.com/<org>/<repo>/issues/<number>

@@ -2,9 +2,12 @@
   "entries": [
     {
       "adr_id": "ADR-001",
-      "title": "Keep /impl and /tdd as separate command surfaces in v1",
+      "date": "2026-03-03",
+      "decision_summary": "Keep both `/impl` and `/tdd` in the v1 command surface (both `core`).",
+      "file_path": "docs/adr/ADR-001-impl-tdd-command-surface.md",
+      "issue_url": "https://github.com/ToaruPen/Scaffold/issues/20",
       "status": "accepted",
-      "file_path": "docs/adr/ADR-001-impl-tdd-command-surface.md"
+      "title": "Keep `/impl` and `/tdd` as separate command surfaces in v1"
     }
   ]
 }

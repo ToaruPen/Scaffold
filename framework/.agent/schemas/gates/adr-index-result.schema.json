@@ -26,12 +26,27 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["adr_id", "title", "status", "file_path"],
+        "required": [
+          "adr_id",
+          "title",
+          "status",
+          "date",
+          "file_path",
+          "decision_summary",
+          "issue_url"
+        ],
         "properties": {
           "adr_id": {"type": "string", "minLength": 1},
           "title": {"type": "string", "minLength": 1},
           "status": {"type": "string", "minLength": 1},
-          "file_path": {"type": "string", "minLength": 1}
+          "date": {"type": "string", "minLength": 1},
+          "file_path": {"type": "string", "minLength": 1},
+          "decision_summary": {"type": "string", "minLength": 1},
+          "issue_url": {"type": "string", "minLength": 1},
+          "supersedes": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1}
+          }
         }
       }
     },

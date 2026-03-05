@@ -8,6 +8,9 @@
 ## Status
 - Proposed | Accepted | Superseded | Deprecated
 
+## Date
+- YYYY-MM-DD
+
 ## Context
 
 ## Decision
@@ -19,6 +22,9 @@
 ### Negative
 -
 
+## Supersedes (Optional)
+- ADR-XXXX
+
 ## References
 - Epic:
-- Issue:
+- Issue: https://github.com/<org>/<repo>/issues/<number>

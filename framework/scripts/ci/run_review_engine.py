@@ -12,18 +12,41 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from framework.scripts.lib.ci_helpers import (
-    relative_path as _ci_relative_path,
-)
-from framework.scripts.lib.ci_helpers import (
-    run_command as _ci_run_command,
-)
-from framework.scripts.lib.ci_helpers import (
-    run_gate as _ci_run_gate,
-)
-from framework.scripts.lib.ci_helpers import (
-    write_json as _ci_write_json,
-)
+try:
+    from framework.scripts.lib.ci_helpers import (
+        relative_path as _ci_relative_path,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        run_command as _ci_run_command,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        run_gate as _ci_run_gate,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        write_json as _ci_write_json,
+    )
+    from framework.scripts.lib.schema_validator import (
+        validate_schema_file as _validate_schema_file,
+    )
+except ModuleNotFoundError:
+    repo_root = Path(__file__).resolve().parents[3]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    from framework.scripts.lib.ci_helpers import (
+        relative_path as _ci_relative_path,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        run_command as _ci_run_command,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        run_gate as _ci_run_gate,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        write_json as _ci_write_json,
+    )
+    from framework.scripts.lib.schema_validator import (
+        validate_schema_file as _validate_schema_file,
+    )
 
 
 @dataclass(frozen=True)
@@ -262,14 +285,13 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _validate_schema(repo_root: Path, schema_path: Path, target_path: Path) -> None:
-    result = _run_command(
-        ["check-jsonschema", "--schemafile", str(schema_path), str(target_path)],
-        cwd=repo_root,
+    _validate_schema_file(
+        repo_root=repo_root,
+        schema_path=schema_path,
+        target_path=target_path,
         timeout_sec=60,
+        command_runner=_run_command,
     )
-    if result.returncode != 0:
-        message = result.stderr.strip() or result.stdout.strip()
-        raise ValueError(f"schema validation failed: {message}")
 
 
 def _relative_path(repo_root: Path, path: Path) -> str:

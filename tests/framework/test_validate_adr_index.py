@@ -28,10 +28,49 @@ def _write_adr(path: Path, *, adr_id: str, title: str, status: str) -> None:
                 "## Status",
                 f"- {status}",
                 "",
+                "## Date",
+                "- 2026-03-05",
+                "",
+                "## Decision",
+                "Use a deterministic validator output.",
+                "",
+                "## References",
+                "- Issue: https://example.com/issues/1",
+                "",
             ]
         ),
         encoding="utf-8",
     )
+
+
+def _write_decisions_index(path: Path, rows: list[dict[str, str]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        "# Decisions Index",
+        "",
+        "Generated from ADR files. Do not edit manually.",
+        "",
+        "## Decision Index",
+        "",
+        "| ADR ID | Title | Decision Summary | Issue | ADR Path |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for row in rows:
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    row["adr_id"],
+                    row["title"],
+                    row["decision_summary"],
+                    row["issue_url"],
+                    row["file_path"],
+                ]
+            )
+            + " |"
+        )
+    lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 class ValidateAdrIndexTests(unittest.TestCase):
@@ -75,6 +114,25 @@ class ValidateAdrIndexTests(unittest.TestCase):
                 title="Second",
                 status="proposed",
             )
+            _write_decisions_index(
+                repo_root / "docs/decisions.md",
+                [
+                    {
+                        "adr_id": "ADR-001",
+                        "title": "First",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/issues/1",
+                        "file_path": "docs/adr/ADR-001.md",
+                    },
+                    {
+                        "adr_id": "ADR-002",
+                        "title": "Second",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/issues/1",
+                        "file_path": "docs/adr/ADR-002.md",
+                    },
+                ],
+            )
             payload = {
                 "request_id": "req-adr-1",
                 "scope_id": "issue-14",
@@ -86,13 +144,19 @@ class ValidateAdrIndexTests(unittest.TestCase):
                             "adr_id": "ADR-001",
                             "title": "First",
                             "status": "accepted",
+                            "date": "2026-03-05",
                             "file_path": "docs/adr/ADR-001.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
                         },
                         {
                             "adr_id": "ADR-002",
                             "title": "Second",
                             "status": "proposed",
+                            "date": "2026-03-05",
                             "file_path": "docs/adr/ADR-002.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
                         },
                     ]
                 },
@@ -128,13 +192,19 @@ class ValidateAdrIndexTests(unittest.TestCase):
                             "adr_id": "ADR-001",
                             "title": "First",
                             "status": "accepted",
+                            "date": "2026-03-05",
                             "file_path": "docs/adr/ADR-001.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
                         },
                         {
                             "adr_id": "ADR-001",
                             "title": "Duplicate",
                             "status": "accepted",
+                            "date": "2026-03-05",
                             "file_path": "docs/adr/ADR-001-copy.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
                         },
                     ]
                 },
@@ -143,6 +213,107 @@ class ValidateAdrIndexTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             body = json.loads(result.stdout)
             self.assertIn("duplicate_adr_id", body["mismatch_reasons"])
+
+    def test_fails_when_decisions_index_mismatches_index(self) -> None:
+        with tempfile.TemporaryDirectory() as repo_tmp:
+            repo_root = Path(repo_tmp)
+            _write_adr(
+                repo_root / "docs/adr/ADR-020.md",
+                adr_id="ADR-020",
+                title="Consistent Title",
+                status="accepted",
+            )
+            _write_decisions_index(
+                repo_root / "docs/decisions.md",
+                [
+                    {
+                        "adr_id": "ADR-020",
+                        "title": "Different Title",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/issues/1",
+                        "file_path": "docs/adr/ADR-020.md",
+                    }
+                ],
+            )
+            payload = {
+                "request_id": "req-adr-9",
+                "scope_id": "issue-14",
+                "run_id": "run-9",
+                "artifact_path": "docs/adr/index.json",
+                "adr_index": {
+                    "entries": [
+                        {
+                            "adr_id": "ADR-020",
+                            "title": "Consistent Title",
+                            "status": "accepted",
+                            "date": "2026-03-05",
+                            "file_path": "docs/adr/ADR-020.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
+                        }
+                    ]
+                },
+            }
+            result = self._run(payload, cwd=repo_root)
+            self.assertEqual(result.returncode, 2)
+            body = json.loads(result.stdout)
+            self.assertIn("decisions_index_mismatch", body["mismatch_reasons"])
+
+    def test_fails_when_decisions_index_has_duplicate_adr_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as repo_tmp:
+            repo_root = Path(repo_tmp)
+            _write_adr(
+                repo_root / "docs/adr/ADR-030.md",
+                adr_id="ADR-030",
+                title="Duplicate Row Check",
+                status="accepted",
+            )
+            decisions_path = repo_root / "docs/decisions.md"
+            decisions_path.parent.mkdir(parents=True, exist_ok=True)
+            decisions_path.write_text(
+                "\n".join(
+                    [
+                        "# Decisions Index",
+                        "",
+                        "Generated from ADR files. Do not edit manually.",
+                        "",
+                        "## Decision Index",
+                        "",
+                        "| ADR ID | Title | Decision Summary | Issue | ADR Path |",
+                        "| --- | --- | --- | --- | --- |",
+                        "| ADR-030 | Duplicate Row Check | Use a deterministic validator output."
+                        " | https://example.com/issues/1 | docs/adr/ADR-030.md |",
+                        "| ADR-030 | Duplicate Row Check | Use a deterministic validator output."
+                        " | https://example.com/issues/1 | docs/adr/ADR-030.md |",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            payload = {
+                "request_id": "req-adr-10",
+                "scope_id": "issue-14",
+                "run_id": "run-10",
+                "artifact_path": "docs/adr/index.json",
+                "adr_index": {
+                    "entries": [
+                        {
+                            "adr_id": "ADR-030",
+                            "title": "Duplicate Row Check",
+                            "status": "accepted",
+                            "date": "2026-03-05",
+                            "file_path": "docs/adr/ADR-030.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
+                        }
+                    ]
+                },
+            }
+            result = self._run(payload, cwd=repo_root)
+            self.assertEqual(result.returncode, 2)
+            body = json.loads(result.stdout)
+            self.assertIn("decisions_index_duplicate_adr_id", body["mismatch_reasons"])
 
     def test_fails_when_adr_file_path_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as repo_tmp:
@@ -158,7 +329,10 @@ class ValidateAdrIndexTests(unittest.TestCase):
                             "adr_id": "ADR-404",
                             "title": "Missing ADR",
                             "status": "accepted",
+                            "date": "2026-03-05",
                             "file_path": "docs/adr/ADR-404.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
                         }
                     ]
                 },
@@ -188,7 +362,10 @@ class ValidateAdrIndexTests(unittest.TestCase):
                             "adr_id": "ADR-900",
                             "title": "Outside",
                             "status": "accepted",
+                            "date": "2026-03-05",
                             "file_path": str(outside_adr),
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
                         }
                     ]
                 },
@@ -215,7 +392,10 @@ class ValidateAdrIndexTests(unittest.TestCase):
                             "adr_id": "ADR-901",
                             "title": "Traversal",
                             "status": "accepted",
+                            "date": "2026-03-05",
                             "file_path": "../ADR-901.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
                         }
                     ]
                 },
@@ -245,7 +425,10 @@ class ValidateAdrIndexTests(unittest.TestCase):
                             "adr_id": "ADR-010",
                             "title": "Expected Title",
                             "status": "accepted",
+                            "date": "2026-03-05",
                             "file_path": "docs/adr/ADR-010.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
                         }
                     ]
                 },
@@ -273,7 +456,10 @@ class ValidateAdrIndexTests(unittest.TestCase):
                             "adr_id": "ADR-011",
                             "title": "Missing Metadata",
                             "status": "accepted",
+                            "date": "2026-03-05",
                             "file_path": "docs/adr/ADR-011.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
                         }
                     ]
                 },

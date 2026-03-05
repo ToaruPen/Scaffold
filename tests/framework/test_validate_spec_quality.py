@@ -67,7 +67,45 @@ class ValidateSpecQualityTests(unittest.TestCase):
         body = json.loads(result.stdout)
         self.assertEqual(body["status"], "fail")
         self.assertIn("acceptance_criteria_missing", body["mismatch_reasons"])
+        self.assertEqual(body["acceptance_criteria_count"], 0)
+
+    def test_fails_when_count_is_non_zero_without_acceptance_criteria(self) -> None:
+        payload = {
+            "request_id": "req-s-4",
+            "scope_id": "issue-2",
+            "run_id": "run-4",
+            "artifact_path": "artifacts/spec/issue-2.json",
+            "spec": {
+                "artifact_ref": "docs/prd/prd-v1.md",
+                "has_acceptance_criteria": False,
+                "has_out_of_scope": True,
+                "acceptance_criteria_count": 2,
+            },
+        }
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
         self.assertIn("acceptance_criteria_count_invalid", body["mismatch_reasons"])
+        self.assertEqual(body["acceptance_criteria_count"], 0)
+
+    def test_fails_when_count_is_negative_with_acceptance_criteria(self) -> None:
+        payload = {
+            "request_id": "req-s-5",
+            "scope_id": "issue-2",
+            "run_id": "run-5",
+            "artifact_path": "artifacts/spec/issue-2.json",
+            "spec": {
+                "artifact_ref": "docs/prd/prd-v1.md",
+                "has_acceptance_criteria": True,
+                "has_out_of_scope": True,
+                "acceptance_criteria_count": -3,
+            },
+        }
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertIn("acceptance_criteria_count_invalid", body["mismatch_reasons"])
+        self.assertEqual(body["acceptance_criteria_count"], 1)
 
     def test_fails_with_invalid_input(self) -> None:
         payload = {

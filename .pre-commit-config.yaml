@@ -21,7 +21,17 @@ repos:
         args:
           - --config-file=pyproject.toml
           - framework/scripts/gates
+          - framework/scripts/lib
+          - framework/scripts/ci
           - tests/framework
+
+  - repo: local
+    hooks:
+      - id: shellcheck
+        name: shellcheck
+        entry: .venv/bin/shellcheck
+        language: system
+        files: ^framework/scripts/hooks/.*\.sh$
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.34.1

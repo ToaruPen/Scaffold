@@ -1,28 +1,42 @@
-.PHONY: install-dev lint format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range command-surfaces command-surfaces-conditional agent-rules
+.PHONY: install-dev lint lint-shell format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range command-surfaces command-surfaces-conditional agent-rules
+
+VENV_BIN ?= .venv/bin
+PYTHON ?= $(VENV_BIN)/python
+RUFF ?= $(VENV_BIN)/ruff
+MYPY ?= $(VENV_BIN)/mypy
+CHECK_JSONSCHEMA ?= $(VENV_BIN)/check-jsonschema
+PRE_COMMIT ?= $(VENV_BIN)/pre-commit
+SHELLCHECK ?= $(VENV_BIN)/shellcheck
+
+export PATH := $(abspath $(VENV_BIN)):$(PATH)
 
 install-dev:
-	python3 -m pip install -r requirements-dev.txt
+	python3 -m venv .venv
+	$(PYTHON) -m pip install -r requirements-dev.txt
 
 lint:
-	ruff check framework tests
+	$(RUFF) check framework tests
+
+lint-shell:
+	$(SHELLCHECK) framework/scripts/hooks/run-lint.sh
 
 format:
-	ruff format framework tests
+	$(RUFF) format framework tests
 
 format-check:
-	ruff format --check framework tests
+	$(RUFF) format --check framework tests
 
 typecheck:
-	mypy --config-file pyproject.toml
+	$(MYPY) --config-file pyproject.toml
 
 schema-check:
-	check-jsonschema --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json
+	$(CHECK_JSONSCHEMA) --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json
 
 test:
-	python3 -m unittest discover -s tests/framework -p "test_*.py"
-	python3 -m unittest discover -s tests/tooling -p "test_*.py"
+	$(PYTHON) -m unittest discover -s tests/framework -p "test_*.py"
+	$(PYTHON) -m unittest discover -s tests/tooling -p "test_*.py"
 
-verify: lint format-check typecheck schema-check test
+verify: lint lint-shell format-check typecheck schema-check test
 
 command-surfaces:
 	python3 tooling/sync/generate_command_surfaces.py --output-root tooling/sync/generated/default --agent all
@@ -34,7 +48,7 @@ agent-rules:
 	python3 tooling/sync/generate_agent_rules.py
 
 pre-commit:
-	pre-commit run --all-files
+	$(PRE_COMMIT) run --all-files
 
 commitlint-check:
 	printf "feat: scaffold quality baseline\n" | npx --yes -p @commitlint/cli -p @commitlint/config-conventional commitlint --config commitlint.config.cjs

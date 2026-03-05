@@ -96,6 +96,65 @@ class SyncAdrIndexTests(unittest.TestCase):
             self.assertIn("| ADR-001 |", decisions_text)
             self.assertIn("https://example.com/issues/1", decisions_text)
 
+    def test_fails_fast_when_adr_dir_is_outside_repository_root(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as outside_tmp,
+            tempfile.TemporaryDirectory(dir=REPO_ROOT) as output_tmp,
+        ):
+            outside_root = Path(outside_tmp)
+            output_root = Path(output_tmp)
+
+            adr_file = outside_root / "docs/adr/ADR-999-external.md"
+            adr_file.parent.mkdir(parents=True, exist_ok=True)
+            adr_file.write_text(
+                "\n".join(
+                    [
+                        "# ADR",
+                        "",
+                        "## ADR ID",
+                        "- ADR-999",
+                        "",
+                        "## Title",
+                        "External ADR",
+                        "",
+                        "## Status",
+                        "- accepted",
+                        "",
+                        "## Date",
+                        "- 2026-03-05",
+                        "",
+                        "## Decision Summary",
+                        "External file should fail.",
+                        "",
+                        "## References",
+                        "- Issue: https://example.com/issues/999",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--adr-dir",
+                    str(outside_root / "docs/adr"),
+                    "--index-path",
+                    str(output_root / "docs/adr/index.json"),
+                    "--decisions-path",
+                    str(output_root / "docs/decisions.md"),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=str(output_root),
+                timeout=60,
+            )
+
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("outside repository root", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

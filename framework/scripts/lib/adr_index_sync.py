@@ -79,7 +79,14 @@ def _extract_supersedes(text: str) -> list[str]:
 
 
 def _relative_path(repo_root: Path, path: Path) -> str:
-    return path.resolve().relative_to(repo_root.resolve()).as_posix()
+    resolved_root = repo_root.resolve()
+    resolved_path = path.resolve()
+    try:
+        return resolved_path.relative_to(resolved_root).as_posix()
+    except ValueError as exc:
+        raise ValueError(
+            f"ADR file is outside repository root: {resolved_path} (root: {resolved_root})"
+        ) from exc
 
 
 def _required_value(sections: dict[str, str], key: str, path: Path) -> str:

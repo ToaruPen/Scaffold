@@ -75,7 +75,13 @@ class ContractLoaderTests(unittest.TestCase):
     def test_required_contracts_for_command_returns_trimmed_values(self) -> None:
         manifest = {
             "must_command_contracts": {
-                "/final-review": {"requires": [" adr-index-consistency ", "review-evidence-link"]}
+                "/final-review": {
+                    "requires": [
+                        " adr-index-consistency ",
+                        "review-evidence-link",
+                        "adr-index-consistency",
+                    ]
+                }
             }
         }
 

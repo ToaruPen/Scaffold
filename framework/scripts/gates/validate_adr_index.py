@@ -34,6 +34,7 @@ from framework.scripts.lib.gate_helpers import (
 _DECISIONS_HEADER = ["ADR ID", "Title", "Decision Summary", "Issue", "ADR Path"]
 _DECISIONS_COLS = len(_DECISIONS_HEADER)
 _ADR_ID_FULL_RE = re.compile(r"^ADR-\d{3,}$")
+_DATE_FULL_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _optional_list_of_texts(obj: dict[str, Any], key: str, parent: str = "") -> list[str] | None:
@@ -84,6 +85,8 @@ def _validate_adr_id_format(value: str, parent: str) -> str:
 
 
 def _validate_date_format(value: str, parent: str) -> str:
+    if _DATE_FULL_RE.match(value) is None:
+        raise ValueError(f"invalid date format: {parent}: {value}")
     try:
         date.fromisoformat(value)
     except ValueError as exc:

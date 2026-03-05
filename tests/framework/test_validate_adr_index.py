@@ -769,6 +769,31 @@ class ValidateAdrIndexTests(unittest.TestCase):
         body = json.loads(result.stdout)
         self.assertEqual(body["errors"][0]["code"], "E_INPUT_INVALID")
 
+    def test_fails_when_index_date_is_compact_iso_without_hyphens(self) -> None:
+        payload = {
+            "request_id": "req-adr-20",
+            "scope_id": "issue-14",
+            "run_id": "run-20",
+            "artifact_path": "docs/adr/index.json",
+            "adr_index": {
+                "entries": [
+                    {
+                        "adr_id": "ADR-020",
+                        "title": "Compact Date",
+                        "status": "accepted",
+                        "date": "20260305",
+                        "file_path": "docs/adr/ADR-020.md",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/issues/1",
+                    }
+                ]
+            },
+        }
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["errors"][0]["code"], "E_INPUT_INVALID")
+
     def test_fails_when_index_issue_url_has_invalid_format(self) -> None:
         payload = {
             "request_id": "req-adr-17",

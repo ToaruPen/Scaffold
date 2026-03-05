@@ -158,6 +158,60 @@ class SyncAdrIndexTests(unittest.TestCase):
                 "invalid date format" in result.stderr or "invalid issue URL" in result.stderr
             )
 
+    def test_rejects_compact_iso_date_without_hyphens(self) -> None:
+        with tempfile.TemporaryDirectory(dir=REPO_ROOT) as repo_tmp:
+            repo_root = Path(repo_tmp)
+            adr_file = repo_root / "docs/adr/ADR-012-invalid-date-shape.md"
+            adr_file.parent.mkdir(parents=True, exist_ok=True)
+            adr_file.write_text(
+                "\n".join(
+                    [
+                        "# ADR",
+                        "",
+                        "## ADR ID",
+                        "- ADR-012",
+                        "",
+                        "## Title",
+                        "Invalid date shape",
+                        "",
+                        "## Status",
+                        "- accepted",
+                        "",
+                        "## Date",
+                        "- 20260305",
+                        "",
+                        "## Decision Summary",
+                        "Date must be YYYY-MM-DD.",
+                        "",
+                        "## References",
+                        "- Issue: https://example.com/issues/12",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--adr-dir",
+                    str(repo_root / "docs/adr"),
+                    "--index-path",
+                    str(repo_root / "docs/adr/index.json"),
+                    "--decisions-path",
+                    str(repo_root / "docs/decisions.md"),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=str(repo_root),
+                timeout=60,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid date format", result.stderr)
+
     def test_rejects_invalid_supersedes_token(self) -> None:
         with tempfile.TemporaryDirectory(dir=REPO_ROOT) as repo_tmp:
             repo_root = Path(repo_tmp)

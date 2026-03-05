@@ -18,9 +18,12 @@ from framework.scripts.lib.adr_markdown_helpers import (
 )
 
 _ADR_ID_FULL_RE = re.compile(r"^ADR-\d{3,}$")
+_DATE_FULL_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _validate_date_format(value: str, path: Path) -> str:
+    if _DATE_FULL_RE.match(value) is None:
+        raise ValueError(f"invalid date format: {value} in {path}")
     try:
         date.fromisoformat(value)
     except ValueError as exc:

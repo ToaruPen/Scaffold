@@ -66,7 +66,12 @@ def required_contracts_for_command(manifest: dict[str, Any], command: str) -> li
         return []
 
     values: list[str] = []
+    seen: set[str] = set()
     for item in requires:
         if isinstance(item, str) and item.strip():
-            values.append(item.strip())
+            value = item.strip()
+            if value in seen:
+                continue
+            seen.add(value)
+            values.append(value)
     return values

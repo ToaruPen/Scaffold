@@ -32,14 +32,19 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     has_acceptance_criteria = require_bool(spec, "has_acceptance_criteria", "spec")
     has_out_of_scope = require_bool(spec, "has_out_of_scope", "spec")
     acceptance_criteria_count = require_int(spec, "acceptance_criteria_count", "spec")
+    normalized_acceptance_criteria_count = acceptance_criteria_count
 
     mismatch_reasons: list[str] = []
     if not has_acceptance_criteria:
         mismatch_reasons.append("acceptance_criteria_missing")
+        if acceptance_criteria_count != 0:
+            mismatch_reasons.append("acceptance_criteria_count_invalid")
+        normalized_acceptance_criteria_count = 0
     if not has_out_of_scope:
         mismatch_reasons.append("out_of_scope_missing")
-    if acceptance_criteria_count < 1:
+    if has_acceptance_criteria and acceptance_criteria_count < 1:
         mismatch_reasons.append("acceptance_criteria_count_invalid")
+        normalized_acceptance_criteria_count = 1
 
     passed = len(mismatch_reasons) == 0
     result: dict[str, Any] = {
@@ -51,7 +56,7 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         "spec_ref": spec_ref,
         "has_acceptance_criteria": has_acceptance_criteria,
         "has_out_of_scope": has_out_of_scope,
-        "acceptance_criteria_count": acceptance_criteria_count,
+        "acceptance_criteria_count": normalized_acceptance_criteria_count,
         "mismatch_reasons": mismatch_reasons,
     }
     if not passed:

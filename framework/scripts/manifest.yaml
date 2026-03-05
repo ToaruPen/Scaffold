@@ -93,7 +93,7 @@ contracts:
     status: implemented
 
   - id: adr-index-consistency
-    description: ADR index and body files are consistent
+    description: ADR body, JSON index, and decisions index are consistent
     validator: framework/scripts/gates/validate_adr_index.py
     result_schema: framework/.agent/schemas/gates/adr-index-result.schema.json
     status: implemented

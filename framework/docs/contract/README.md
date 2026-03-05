@@ -16,6 +16,7 @@ This directory defines hard gate contracts distributed to consumer repositories.
 - `hard-gates.md`: policy-level gate requirements
 - `adapter-interfaces.md`: adapter I/F contracts
 - `workflow-map.md`: flow-first operation and on-demand command loading
+- `adr-operations.md`: ADR sync and supersede operation contract
 - `framework/scripts/manifest.yaml`: executable contract inventory and command mapping
 
 ## Not in Contract Scope

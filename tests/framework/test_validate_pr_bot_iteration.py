@@ -77,6 +77,7 @@ class ValidatePrBotIterationTests(unittest.TestCase):
         body = json.loads(result.stdout)
         self.assertEqual(body["status"], "fail")
         self.assertIn("invalid_resolution_status", body["mismatch_reasons"])
+        self.assertEqual(body["iterations"][0]["resolution_status"], "deferred")
 
     def test_fails_with_invalid_input(self) -> None:
         payload = {

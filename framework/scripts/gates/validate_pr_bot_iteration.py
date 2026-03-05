@@ -19,6 +19,7 @@ from framework.scripts.lib.gate_helpers import (
 )
 
 _VALID_RESOLUTION_STATUSES = {"addressed", "deferred", "rejected"}
+_FALLBACK_RESOLUTION_STATUS = "deferred"
 
 
 def _require_iterations(bot_feedback: dict[str, Any]) -> list[dict[str, Any]]:
@@ -52,15 +53,17 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         feedback_ref = require_text(iteration, "feedback_ref", parent)
         resolution_status = require_text(iteration, "resolution_status", parent).lower()
         resolution_ref = require_text(iteration, "resolution_ref", parent)
+        normalized_resolution_status = resolution_status
 
         if resolution_status not in _VALID_RESOLUTION_STATUSES:
             mismatch_reasons.append("invalid_resolution_status")
+            normalized_resolution_status = _FALLBACK_RESOLUTION_STATUS
 
         normalized_iterations.append(
             {
                 "bot_name": bot_name,
                 "feedback_ref": feedback_ref,
-                "resolution_status": resolution_status,
+                "resolution_status": normalized_resolution_status,
                 "resolution_ref": resolution_ref,
             }
         )
@@ -105,7 +108,7 @@ def main() -> int:
                 {
                     "bot_name": "unknown",
                     "feedback_ref": "unknown",
-                    "resolution_status": "deferred",
+                    "resolution_status": _FALLBACK_RESOLUTION_STATUS,
                     "resolution_ref": "unknown",
                 }
             ],

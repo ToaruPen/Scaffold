@@ -31,6 +31,15 @@ Distributable script layer for consumer repositories.
 - `framework/scripts/lib/vcs_stub.py`
 - `framework/scripts/lib/bot_stub.py`
 
+## Shared utility modules
+
+- `framework/scripts/lib/contract_loader.py`
+  - Loads `framework/scripts/manifest.yaml` safely and provides contract lookup helpers.
+- `framework/scripts/lib/schema_validator.py`
+  - Shared JSON/YAML schema validation wrapper over `check-jsonschema`.
+- `framework/scripts/lib/exit_codes.py`
+  - Centralized exit code constants shared by CI/gate scripts.
+
 ## Review runner
 
 - `framework/scripts/ci/run_review_engine.py`
@@ -64,6 +73,11 @@ Distributable script layer for consumer repositories.
   - Runs stage-specific `final-review` gate validation plus `review-evidence-link`, `drift-detection`, and `adr-index-consistency`.
   - Publishes gate result entrypoints for `final_review_gate_result`, `review_evidence_gate_result`, `drift_detection_gate_result`, and `adr_index_gate_result` in `outputs/index.json` and `outputs/run-metadata.json`.
   - Writes artifacts under `.scaffold/review_results/<scope_id>/<run_id>/final-review/`.
+
+- `framework/scripts/ci/sync_adr_index.py`
+  - Generates `docs/adr/index.json` and `docs/decisions.md` from ADR files.
+  - Requires ADR body metadata (`ADR ID`, `Title`, `Status`, `Date`, `Decision`, `References/Issue`).
+  - Produces deterministic, idempotent output (stable sorting and normalized values).
 
 ## Implemented validators
 
@@ -130,7 +144,7 @@ Distributable script layer for consumer repositories.
   - Exit code: `0` (valid), `2` (invalid input/mismatch).
 
 - `framework/scripts/gates/validate_adr_index.py`
-  - Validates ADR index entry structure, duplicate `adr_id`, indexed ADR file existence, repository-bounded ADR paths, and ADR body metadata consistency.
+  - Validates ADR index entry structure, duplicate `adr_id`, indexed ADR file existence, repository-bounded ADR paths, ADR body metadata consistency, and `docs/decisions.md` table consistency.
   - Required top-level inputs: `request_id`, `scope_id`, `run_id`, `artifact_path`, `adr_index`.
   - Exit code: `0` (valid), `2` (invalid input/mismatch).
 

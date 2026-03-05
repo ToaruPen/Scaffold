@@ -9,6 +9,9 @@ Keep `/impl` and `/tdd` as separate command surfaces in v1
 ## Status
 - accepted
 
+## Date
+- 2026-03-03
+
 ## Context
 
 - `framework/scripts/manifest.yaml` maps both `/impl` and `/tdd` to the same must contracts:
@@ -47,4 +50,4 @@ Keep `/impl` and `/tdd` as separate command surfaces in v1
 
 ## References
 - Epic: `docs/epics/epic-scaffold-dev-cycle-v1.md`
-- Issue: `#20`
+- Issue: https://github.com/ToaruPen/Scaffold/issues/20

@@ -6,6 +6,13 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from framework.scripts.lib.exit_codes import (
+    EXIT_CANNOT_EXECUTE,
+    EXIT_COMMAND_NOT_FOUND,
+    EXIT_SOFTWARE_ERROR,
+    EXIT_TIMEOUT,
+)
+
 _ALLOWED_BINARIES = {
     "check-jsonschema",
     "claude",
@@ -55,28 +62,28 @@ def run_command(
         stderr_text = f"{stderr_text}\n{timeout_message}" if stderr_text else timeout_message
         return subprocess.CompletedProcess(
             args=command,
-            returncode=124,
+            returncode=EXIT_TIMEOUT,
             stdout=stdout_text,
             stderr=stderr_text,
         )
     except FileNotFoundError as exc:
         return subprocess.CompletedProcess(
             args=command,
-            returncode=127,
+            returncode=EXIT_COMMAND_NOT_FOUND,
             stdout=_stream_to_text(getattr(exc, "stdout", None)),
             stderr=f"executable not found: {exc}",
         )
     except PermissionError as exc:
         return subprocess.CompletedProcess(
             args=command,
-            returncode=126,
+            returncode=EXIT_CANNOT_EXECUTE,
             stdout=_stream_to_text(getattr(exc, "stdout", None)),
             stderr=f"permission denied: {exc}",
         )
     except subprocess.SubprocessError as exc:
         return subprocess.CompletedProcess(
             args=command,
-            returncode=70,
+            returncode=EXIT_SOFTWARE_ERROR,
             stdout="",
             stderr=f"subprocess failure: {exc}",
         )

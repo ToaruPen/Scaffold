@@ -12,18 +12,41 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from framework.scripts.lib.ci_helpers import (
-    relative_path as _ci_relative_path,
-)
-from framework.scripts.lib.ci_helpers import (
-    run_command as _ci_run_command,
-)
-from framework.scripts.lib.ci_helpers import (
-    run_gate as _ci_run_gate,
-)
-from framework.scripts.lib.ci_helpers import (
-    write_json as _ci_write_json,
-)
+try:
+    from framework.scripts.lib.ci_helpers import (
+        relative_path as _ci_relative_path,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        run_command as _ci_run_command,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        run_gate as _ci_run_gate,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        write_json as _ci_write_json,
+    )
+    from framework.scripts.lib.schema_validator import (
+        validate_schema_file as _validate_schema_file,
+    )
+except ModuleNotFoundError:
+    repo_root = Path(__file__).resolve().parents[3]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    from framework.scripts.lib.ci_helpers import (
+        relative_path as _ci_relative_path,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        run_command as _ci_run_command,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        run_gate as _ci_run_gate,
+    )
+    from framework.scripts.lib.ci_helpers import (
+        write_json as _ci_write_json,
+    )
+    from framework.scripts.lib.schema_validator import (
+        validate_schema_file as _validate_schema_file,
+    )
 
 
 @dataclass(frozen=True)
@@ -262,18 +285,31 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _validate_schema(repo_root: Path, schema_path: Path, target_path: Path) -> None:
-    result = _run_command(
-        ["check-jsonschema", "--schemafile", str(schema_path), str(target_path)],
-        cwd=repo_root,
+    _validate_schema_file(
+        repo_root=repo_root,
+        schema_path=schema_path,
+        target_path=target_path,
         timeout_sec=60,
+        command_runner=_run_command,
     )
-    if result.returncode != 0:
-        message = result.stderr.strip() or result.stdout.strip()
-        raise ValueError(f"schema validation failed: {message}")
 
 
 def _relative_path(repo_root: Path, path: Path) -> str:
     return _ci_relative_path(repo_root, path)
+
+
+def _optional_relative_path(repo_root: Path, path: Path | None) -> str | None:
+    if path is None:
+        return None
+    candidate = path if path.is_absolute() else repo_root / path
+    return _relative_path(repo_root, candidate)
+
+
+def _build_optional_metadata(config: RunnerConfig, repo_root: Path) -> dict[str, str | None]:
+    return {
+        "declared_targets_file": _optional_relative_path(repo_root, config.declared_targets_file),
+        "adr_index_file": _optional_relative_path(repo_root, config.adr_index_file),
+    }
 
 
 def _run_gate(
@@ -580,6 +616,7 @@ def main() -> int:
             "configured_effort": (
                 config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
             ),
+            **_build_optional_metadata(config, repo_root),
             "entrypoints": {
                 "primary_review": _relative_path(repo_root, review_json_path),
                 "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),
@@ -624,6 +661,7 @@ def main() -> int:
             "configured_effort": (
                 config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
             ),
+            **_build_optional_metadata(config, repo_root),
             "entrypoints": {
                 "primary_review": _relative_path(repo_root, review_json_path),
                 "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),

@@ -10,7 +10,7 @@ from framework.scripts.lib.schema_validator import validate_schema_file
 
 class SchemaValidatorTests(unittest.TestCase):
     def test_validate_schema_file_runs_check_jsonschema(self) -> None:
-        recorded: list[list[str]] = []
+        recorded: list[dict[str, object]] = []
 
         def _runner(
             command: list[str],
@@ -19,8 +19,14 @@ class SchemaValidatorTests(unittest.TestCase):
             timeout_sec: int,
             stdin_text: str | None = None,
         ) -> subprocess.CompletedProcess[str]:
-            del cwd, timeout_sec, stdin_text
-            recorded.append(command)
+            recorded.append(
+                {
+                    "command": command,
+                    "cwd": cwd,
+                    "timeout_sec": timeout_sec,
+                    "stdin_text": stdin_text,
+                }
+            )
             return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -35,16 +41,23 @@ class SchemaValidatorTests(unittest.TestCase):
         self.assertEqual(
             recorded,
             [
-                [
-                    "check-jsonschema",
-                    "--schemafile",
-                    str(Path(tmp) / "schema.json"),
-                    str(Path(tmp) / "target.json"),
-                ]
+                {
+                    "command": [
+                        "check-jsonschema",
+                        "--schemafile",
+                        str(Path(tmp) / "schema.json"),
+                        str(Path(tmp) / "target.json"),
+                    ],
+                    "cwd": Path(tmp),
+                    "timeout_sec": 60,
+                    "stdin_text": None,
+                }
             ],
         )
 
     def test_validate_schema_file_raises_on_failure(self) -> None:
+        recorded: list[dict[str, object]] = []
+
         def _runner(
             command: list[str],
             *,
@@ -52,7 +65,14 @@ class SchemaValidatorTests(unittest.TestCase):
             timeout_sec: int,
             stdin_text: str | None = None,
         ) -> subprocess.CompletedProcess[str]:
-            del cwd, timeout_sec, stdin_text
+            recorded.append(
+                {
+                    "command": command,
+                    "cwd": cwd,
+                    "timeout_sec": timeout_sec,
+                    "stdin_text": stdin_text,
+                }
+            )
             return subprocess.CompletedProcess(
                 args=command,
                 returncode=2,
@@ -69,6 +89,9 @@ class SchemaValidatorTests(unittest.TestCase):
                     target_path=repo_root / "target.json",
                     command_runner=_runner,
                 )
+            self.assertEqual(recorded[0]["cwd"], repo_root)
+            self.assertEqual(recorded[0]["timeout_sec"], 60)
+            self.assertIsNone(recorded[0]["stdin_text"])
 
 
 if __name__ == "__main__":

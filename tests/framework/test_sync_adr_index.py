@@ -13,7 +13,7 @@ SCRIPT = REPO_ROOT / "framework/scripts/ci/sync_adr_index.py"
 
 class SyncAdrIndexTests(unittest.TestCase):
     def test_generates_index_and_decisions_files(self) -> None:
-        with tempfile.TemporaryDirectory() as repo_tmp:
+        with tempfile.TemporaryDirectory(dir=REPO_ROOT) as repo_tmp:
             repo_root = Path(repo_tmp)
             adr_file = repo_root / "docs/adr/ADR-001-use-core.md"
             adr_file.parent.mkdir(parents=True, exist_ok=True)
@@ -37,7 +37,7 @@ class SyncAdrIndexTests(unittest.TestCase):
                         "## Context",
                         "Need stable operation",
                         "",
-                        "## Decision",
+                        "## Decision Summary",
                         "Keep core commands explicit.",
                         "",
                         "## Consequences",
@@ -55,13 +55,32 @@ class SyncAdrIndexTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = subprocess.run(
-                [sys.executable, str(SCRIPT)],
-                capture_output=True,
-                text=True,
-                check=False,
-                cwd=str(repo_root),
-            )
+            adr_dir = repo_root / "docs/adr"
+            index_path = repo_root / "docs/adr/index.json"
+            decisions_path = repo_root / "docs/decisions.md"
+
+            try:
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(SCRIPT),
+                        "--adr-dir",
+                        str(adr_dir),
+                        "--index-path",
+                        str(index_path),
+                        "--decisions-path",
+                        str(decisions_path),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    cwd=str(repo_root),
+                    timeout=60,
+                )
+            except subprocess.TimeoutExpired as exc:
+                stdout = exc.stdout if isinstance(exc.stdout, str) else ""
+                stderr = exc.stderr if isinstance(exc.stderr, str) else ""
+                self.fail(f"sync_adr_index timed out; stdout={stdout!r} stderr={stderr!r}")
             self.assertEqual(result.returncode, 0, msg=result.stderr)
 
             index_payload = json.loads(

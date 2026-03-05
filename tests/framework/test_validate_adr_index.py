@@ -12,33 +12,39 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "framework/scripts/gates/validate_adr_index.py"
 
 
-def _write_adr(path: Path, *, adr_id: str, title: str, status: str) -> None:
+def _write_adr(
+    path: Path,
+    *,
+    adr_id: str,
+    title: str,
+    status: str,
+    supersedes: list[str] | None = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        "# ADR",
+        "",
+        "## ADR ID",
+        f"- {adr_id}",
+        "",
+        "## Title",
+        title,
+        "",
+        "## Status",
+        f"- {status}",
+        "",
+        "## Date",
+        "- 2026-03-05",
+        "",
+        "## Decision",
+        "Use a deterministic validator output.",
+        "",
+    ]
+    if supersedes:
+        lines.extend(["## Supersedes (Optional)", *[f"- {item}" for item in supersedes], ""])
+    lines.extend(["## References", "- Issue: https://example.com/issues/1", ""])
     path.write_text(
-        "\n".join(
-            [
-                "# ADR",
-                "",
-                "## ADR ID",
-                f"- {adr_id}",
-                "",
-                "## Title",
-                title,
-                "",
-                "## Status",
-                f"- {status}",
-                "",
-                "## Date",
-                "- 2026-03-05",
-                "",
-                "## Decision",
-                "Use a deterministic validator output.",
-                "",
-                "## References",
-                "- Issue: https://example.com/issues/1",
-                "",
-            ]
-        ),
+        "\n".join(lines),
         encoding="utf-8",
     )
 
@@ -166,6 +172,121 @@ class ValidateAdrIndexTests(unittest.TestCase):
             body = json.loads(result.stdout)
             self.assertEqual(body["status"], "pass")
 
+    def test_passes_when_body_adr_id_is_lowercase(self) -> None:
+        with tempfile.TemporaryDirectory() as repo_tmp:
+            repo_root = Path(repo_tmp)
+            _write_adr(
+                repo_root / "docs/adr/ADR-040.md",
+                adr_id="adr-040",
+                title="Lowercase ID",
+                status="accepted",
+            )
+            _write_decisions_index(
+                repo_root / "docs/decisions.md",
+                [
+                    {
+                        "adr_id": "ADR-040",
+                        "title": "Lowercase ID",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/issues/1",
+                        "file_path": "docs/adr/ADR-040.md",
+                    }
+                ],
+            )
+
+            payload = {
+                "request_id": "req-adr-11",
+                "scope_id": "issue-14",
+                "run_id": "run-11",
+                "artifact_path": "docs/adr/index.json",
+                "adr_index": {
+                    "entries": [
+                        {
+                            "adr_id": "ADR-040",
+                            "title": "Lowercase ID",
+                            "status": "accepted",
+                            "date": "2026-03-05",
+                            "file_path": "docs/adr/ADR-040.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
+                        }
+                    ]
+                },
+            }
+            result = self._run(payload, cwd=repo_root)
+            self.assertEqual(result.returncode, 0)
+            body = json.loads(result.stdout)
+            self.assertEqual(body["status"], "pass")
+
+    def test_passes_when_body_uses_decision_summary_section(self) -> None:
+        with tempfile.TemporaryDirectory() as repo_tmp:
+            repo_root = Path(repo_tmp)
+            adr_path = repo_root / "docs/adr/ADR-042.md"
+            adr_path.parent.mkdir(parents=True, exist_ok=True)
+            adr_path.write_text(
+                "\n".join(
+                    [
+                        "# ADR",
+                        "",
+                        "## ADR ID",
+                        "- ADR-042",
+                        "",
+                        "## Title",
+                        "Decision Summary Section",
+                        "",
+                        "## Status",
+                        "- accepted",
+                        "",
+                        "## Date",
+                        "- 2026-03-05",
+                        "",
+                        "## Decision Summary",
+                        "Use Decision Summary heading.",
+                        "",
+                        "## References",
+                        "- Issue: https://example.com/issues/1",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            _write_decisions_index(
+                repo_root / "docs/decisions.md",
+                [
+                    {
+                        "adr_id": "ADR-042",
+                        "title": "Decision Summary Section",
+                        "decision_summary": "Use Decision Summary heading.",
+                        "issue_url": "https://example.com/issues/1",
+                        "file_path": "docs/adr/ADR-042.md",
+                    }
+                ],
+            )
+
+            payload = {
+                "request_id": "req-adr-13",
+                "scope_id": "issue-14",
+                "run_id": "run-13",
+                "artifact_path": "docs/adr/index.json",
+                "adr_index": {
+                    "entries": [
+                        {
+                            "adr_id": "ADR-042",
+                            "title": "Decision Summary Section",
+                            "status": "accepted",
+                            "date": "2026-03-05",
+                            "file_path": "docs/adr/ADR-042.md",
+                            "decision_summary": "Use Decision Summary heading.",
+                            "issue_url": "https://example.com/issues/1",
+                        }
+                    ]
+                },
+            }
+            result = self._run(payload, cwd=repo_root)
+            self.assertEqual(result.returncode, 0)
+            body = json.loads(result.stdout)
+            self.assertEqual(body["status"], "pass")
+
     def test_fails_with_duplicate_adr_id(self) -> None:
         with tempfile.TemporaryDirectory() as repo_tmp:
             repo_root = Path(repo_tmp)
@@ -268,27 +389,24 @@ class ValidateAdrIndexTests(unittest.TestCase):
                 title="Duplicate Row Check",
                 status="accepted",
             )
-            decisions_path = repo_root / "docs/decisions.md"
-            decisions_path.parent.mkdir(parents=True, exist_ok=True)
-            decisions_path.write_text(
-                "\n".join(
-                    [
-                        "# Decisions Index",
-                        "",
-                        "Generated from ADR files. Do not edit manually.",
-                        "",
-                        "## Decision Index",
-                        "",
-                        "| ADR ID | Title | Decision Summary | Issue | ADR Path |",
-                        "| --- | --- | --- | --- | --- |",
-                        "| ADR-030 | Duplicate Row Check | Use a deterministic validator output."
-                        " | https://example.com/issues/1 | docs/adr/ADR-030.md |",
-                        "| ADR-030 | Duplicate Row Check | Use a deterministic validator output."
-                        " | https://example.com/issues/1 | docs/adr/ADR-030.md |",
-                        "",
-                    ]
-                ),
-                encoding="utf-8",
+            _write_decisions_index(
+                repo_root / "docs/decisions.md",
+                [
+                    {
+                        "adr_id": "ADR-030",
+                        "title": "Duplicate Row Check",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/issues/1",
+                        "file_path": "docs/adr/ADR-030.md",
+                    },
+                    {
+                        "adr_id": "ADR-030",
+                        "title": "Duplicate Row Check",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/issues/1",
+                        "file_path": "docs/adr/ADR-030.md",
+                    },
+                ],
             )
 
             payload = {
@@ -468,6 +586,53 @@ class ValidateAdrIndexTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             body = json.loads(result.stdout)
             self.assertIn("adr_metadata_missing", body["mismatch_reasons"])
+
+    def test_fails_when_supersedes_mismatches_body(self) -> None:
+        with tempfile.TemporaryDirectory() as repo_tmp:
+            repo_root = Path(repo_tmp)
+            _write_adr(
+                repo_root / "docs/adr/ADR-041.md",
+                adr_id="ADR-041",
+                title="Supersedes Mismatch",
+                status="accepted",
+                supersedes=["ADR-001"],
+            )
+            _write_decisions_index(
+                repo_root / "docs/decisions.md",
+                [
+                    {
+                        "adr_id": "ADR-041",
+                        "title": "Supersedes Mismatch",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/issues/1",
+                        "file_path": "docs/adr/ADR-041.md",
+                    }
+                ],
+            )
+            payload = {
+                "request_id": "req-adr-12",
+                "scope_id": "issue-14",
+                "run_id": "run-12",
+                "artifact_path": "docs/adr/index.json",
+                "adr_index": {
+                    "entries": [
+                        {
+                            "adr_id": "ADR-041",
+                            "title": "Supersedes Mismatch",
+                            "status": "accepted",
+                            "date": "2026-03-05",
+                            "file_path": "docs/adr/ADR-041.md",
+                            "decision_summary": "Use a deterministic validator output.",
+                            "issue_url": "https://example.com/issues/1",
+                            "supersedes": ["ADR-002"],
+                        }
+                    ]
+                },
+            }
+            result = self._run(payload, cwd=repo_root)
+            self.assertEqual(result.returncode, 2)
+            body = json.loads(result.stdout)
+            self.assertIn("adr_metadata_mismatch", body["mismatch_reasons"])
 
     def test_fails_with_invalid_input(self) -> None:
         payload = {

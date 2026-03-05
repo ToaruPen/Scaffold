@@ -108,7 +108,7 @@ def main() -> int:
                 {
                     "bot_name": "unknown",
                     "feedback_ref": "unknown",
-                    "resolution_status": "deferred",
+                    "resolution_status": _FALLBACK_RESOLUTION_STATUS,
                     "resolution_ref": "unknown",
                 }
             ],

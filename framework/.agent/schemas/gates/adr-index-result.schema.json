@@ -39,10 +39,10 @@
           "adr_id": {"type": "string", "minLength": 1},
           "title": {"type": "string", "minLength": 1},
           "status": {"type": "string", "minLength": 1},
-          "date": {"type": "string", "minLength": 1},
+          "date": {"type": "string", "minLength": 1, "format": "date"},
           "file_path": {"type": "string", "minLength": 1},
           "decision_summary": {"type": "string", "minLength": 1},
-          "issue_url": {"type": "string", "minLength": 1},
+          "issue_url": {"type": "string", "minLength": 1, "format": "uri"},
           "supersedes": {
             "type": "array",
             "items": {"type": "string", "minLength": 1}

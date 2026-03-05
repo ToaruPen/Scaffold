@@ -11,6 +11,9 @@
 ## Date
 - YYYY-MM-DD
 
+## Decision Summary
+- Short summary of the decision
+
 ## Context
 
 ## Decision

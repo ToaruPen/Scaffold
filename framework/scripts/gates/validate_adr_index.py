@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,11 @@ from framework.scripts.lib.gate_helpers import (
 
 _DECISIONS_HEADER = ["ADR ID", "Title", "Decision Summary", "Issue", "ADR Path"]
 _DECISIONS_COLS = len(_DECISIONS_HEADER)
+_SUPERSEDES_ADR_ID_RE = re.compile(r"ADR-\d+", re.IGNORECASE)
+
+
+def _normalize_adr_id(value: str) -> str:
+    return value.strip().upper()
 
 
 def _optional_list_of_texts(obj: dict[str, Any], key: str, parent: str = "") -> list[str] | None:
@@ -110,7 +116,31 @@ def _extract_issue_reference(text: str) -> str | None:
     return None
 
 
-def _load_adr_metadata(path: Path) -> dict[str, str] | None:
+def _first_matching_section_text(sections: dict[str, str], keys: list[str]) -> str:
+    for key in keys:
+        if key in sections:
+            return sections[key]
+    return ""
+
+
+def _first_section_with_prefix(sections: dict[str, str], prefix: str) -> str:
+    for key, value in sections.items():
+        if key.startswith(prefix):
+            return value
+    return ""
+
+
+def _extract_supersedes_values(text: str) -> list[str]:
+    values: list[str] = []
+    for raw_line in text.splitlines():
+        for match in _SUPERSEDES_ADR_ID_RE.findall(raw_line):
+            normalized = _normalize_adr_id(match)
+            if normalized and normalized not in values:
+                values.append(normalized)
+    return values
+
+
+def _load_adr_metadata(path: Path) -> dict[str, Any] | None:
     try:
         content = path.read_text(encoding="utf-8")
     except OSError:
@@ -121,8 +151,11 @@ def _load_adr_metadata(path: Path) -> dict[str, str] | None:
     title = _first_section_value(sections.get("title", ""))
     status = _first_section_value(sections.get("status", ""))
     date = _first_section_value(sections.get("date", ""))
-    decision_summary = _first_section_value(sections.get("decision", ""))
+    decision_summary = _first_section_value(
+        _first_matching_section_text(sections, ["decision summary", "decision"])
+    )
     issue_url = _extract_issue_reference(sections.get("references", ""))
+    supersedes = _extract_supersedes_values(_first_section_with_prefix(sections, "supersedes"))
     if (
         adr_id is None
         or title is None
@@ -134,12 +167,13 @@ def _load_adr_metadata(path: Path) -> dict[str, str] | None:
         return None
 
     return {
-        "adr_id": adr_id,
+        "adr_id": _normalize_adr_id(adr_id),
         "title": title,
         "status": status.lower(),
         "date": date,
         "decision_summary": decision_summary,
         "issue_url": issue_url,
+        "supersedes": supersedes,
     }
 
 
@@ -175,9 +209,10 @@ def _parse_decisions_rows(
         adr_id, title, decision_summary, issue_url, file_path = row
         if not adr_id:
             continue
-        if adr_id in values:
+        normalized_adr_id = _normalize_adr_id(adr_id)
+        if normalized_adr_id in values:
             return None, "decisions_index_duplicate_adr_id"
-        values[adr_id] = {
+        values[normalized_adr_id] = {
             "title": title,
             "decision_summary": decision_summary,
             "issue_url": issue_url,
@@ -212,7 +247,7 @@ def _load_decisions_index(path: Path) -> tuple[dict[str, dict[str, str]] | None,
 
 def _parse_index_entry(entry: dict[str, Any], parent: str) -> dict[str, Any]:
     parsed: dict[str, Any] = {
-        "adr_id": require_text(entry, "adr_id", parent),
+        "adr_id": _normalize_adr_id(require_text(entry, "adr_id", parent)),
         "title": require_text(entry, "title", parent),
         "status": require_text(entry, "status", parent),
         "date": require_text(entry, "date", parent),
@@ -222,7 +257,7 @@ def _parse_index_entry(entry: dict[str, Any], parent: str) -> dict[str, Any]:
     }
     supersedes = _optional_list_of_texts(entry, "supersedes", parent)
     if supersedes:
-        parsed["supersedes"] = supersedes
+        parsed["supersedes"] = [_normalize_adr_id(item) for item in supersedes]
     return parsed
 
 
@@ -248,6 +283,7 @@ def _check_body_consistency(entry: dict[str, Any], repo_root: Path) -> set[str]:
         or metadata["date"] != entry["date"]
         or metadata["decision_summary"] != entry["decision_summary"]
         or metadata["issue_url"] != entry["issue_url"]
+        or metadata["supersedes"] != entry.get("supersedes", [])
     ):
         reasons.add("adr_metadata_mismatch")
     return reasons
@@ -343,10 +379,10 @@ def _invalid_input_result(message: str) -> dict[str, Any]:
                 "adr_id": "unknown",
                 "title": "invalid_input",
                 "status": "unknown",
-                "date": "unknown",
+                "date": "1970-01-01",
                 "file_path": "unknown",
                 "decision_summary": "unknown",
-                "issue_url": "unknown",
+                "issue_url": "https://example.invalid/issues/unknown",
             }
         ],
         "entry_count": 1,

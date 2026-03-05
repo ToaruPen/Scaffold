@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _ADR_ID_RE = re.compile(r"ADR-\d+", re.IGNORECASE)
+_ADR_ID_FULL_RE = re.compile(r"^ADR-\d{3,}$")
 
 
 @dataclass(frozen=True)
@@ -88,21 +89,41 @@ def _required_value(sections: dict[str, str], key: str, path: Path) -> str:
     return value
 
 
+def _first_matching_section_text(sections: dict[str, str], keys: list[str]) -> str:
+    for key in keys:
+        if key in sections:
+            return sections[key]
+    return ""
+
+
+def _first_section_with_prefix(sections: dict[str, str], prefix: str) -> str:
+    for key, value in sections.items():
+        if key.startswith(prefix):
+            return value
+    return ""
+
+
 def load_adr_record(repo_root: Path, path: Path) -> AdrRecord:
     content = path.read_text(encoding="utf-8")
     sections = _extract_markdown_sections(content)
 
     adr_id = _required_value(sections, "adr id", path).upper()
+    if _ADR_ID_FULL_RE.match(adr_id) is None:
+        raise ValueError(f"invalid ADR ID format: {adr_id} in {path}")
     title = _required_value(sections, "title", path)
     status = _required_value(sections, "status", path).lower()
     date = _required_value(sections, "date", path)
-    decision_summary = _required_value(sections, "decision", path)
+    decision_summary = _first_section_value(
+        _first_matching_section_text(sections, ["decision summary", "decision"])
+    )
+    if decision_summary is None:
+        raise ValueError(f"missing section value: decision summary in {path}")
 
     issue_url = _extract_issue_url(sections.get("references", ""))
     if issue_url is None:
         raise ValueError(f"missing reference value: Issue in {path}")
 
-    supersedes = _extract_supersedes(sections.get("supersedes", ""))
+    supersedes = _extract_supersedes(_first_section_with_prefix(sections, "supersedes"))
 
     return AdrRecord(
         adr_id=adr_id,
@@ -119,7 +140,7 @@ def load_adr_record(repo_root: Path, path: Path) -> AdrRecord:
 def _sort_key(record: AdrRecord) -> tuple[int, str]:
     match = re.search(r"(\d+)$", record.adr_id)
     if match is None:
-        return (10**9, record.adr_id)
+        raise ValueError(f"invalid ADR ID for sorting: {record.adr_id}")
     return (int(match.group(1)), record.adr_id)
 
 

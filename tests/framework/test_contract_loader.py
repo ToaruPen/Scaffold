@@ -38,7 +38,7 @@ class ContractLoaderTests(unittest.TestCase):
         self.assertEqual(manifest["version"], 2)
         self.assertEqual(manifest["contracts"][0]["id"], "adr-index-consistency")
 
-    def test_load_manifest_fails_on_invalid_yaml(self) -> None:
+    def test_load_manifest_fails_when_root_is_not_object(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "manifest.yaml"
             path.write_text("- not-an-object\n", encoding="utf-8")

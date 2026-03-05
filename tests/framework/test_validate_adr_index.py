@@ -722,6 +722,31 @@ class ValidateAdrIndexTests(unittest.TestCase):
         body = json.loads(result.stdout)
         self.assertEqual(body["errors"][0]["code"], "E_INPUT_INVALID")
 
+    def test_fails_when_index_issue_url_contains_whitespace(self) -> None:
+        payload = {
+            "request_id": "req-adr-18",
+            "scope_id": "issue-14",
+            "run_id": "run-18",
+            "artifact_path": "docs/adr/index.json",
+            "adr_index": {
+                "entries": [
+                    {
+                        "adr_id": "ADR-018",
+                        "title": "Whitespace URL",
+                        "status": "accepted",
+                        "date": "2026-03-05",
+                        "file_path": "docs/adr/ADR-018.md",
+                        "decision_summary": "Use a deterministic validator output.",
+                        "issue_url": "https://example.com/a b",
+                    }
+                ]
+            },
+        }
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["errors"][0]["code"], "E_INPUT_INVALID")
+
     def test_fails_with_adr_metadata_missing_when_body_adr_id_invalid(self) -> None:
         with tempfile.TemporaryDirectory() as repo_tmp:
             repo_root = Path(repo_tmp)

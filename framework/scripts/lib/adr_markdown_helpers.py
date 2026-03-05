@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_ADR_ID_RE = re.compile(r"ADR-\d+", re.IGNORECASE)
+_ADR_ID_RE = re.compile(r"^ADR-\d{3,}$")
 
 
 def _normalize_adr_id(value: str) -> str:
@@ -60,9 +60,17 @@ def _extract_issue_url(text: str) -> str | None:
 def _extract_supersedes(text: str) -> list[str]:
     values: list[str] = []
     for raw_line in text.splitlines():
-        matches = _ADR_ID_RE.findall(raw_line)
-        for match in matches:
-            normalized = _normalize_adr_id(match)
+        line = raw_line.strip()
+        if line.startswith("-"):
+            line = line[1:].strip()
+        if not line:
+            continue
+        for token in re.split(r"[\s,]+", line):
+            if not token:
+                continue
+            normalized = _normalize_adr_id(token)
+            if _ADR_ID_RE.fullmatch(normalized) is None:
+                continue
             if normalized not in values:
                 values.append(normalized)
     return values

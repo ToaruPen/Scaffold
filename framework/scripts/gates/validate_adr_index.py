@@ -93,7 +93,9 @@ def _validate_date_format(value: str, parent: str) -> str:
 
 def _validate_issue_url_format(value: str, parent: str) -> str:
     parsed = urlparse(value)
-    if not parsed.scheme or not parsed.netloc:
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(f"invalid issue_url format: {parent}: {value}")
+    if any(char.isspace() for char in value):
         raise ValueError(f"invalid issue_url format: {parent}: {value}")
     return value
 

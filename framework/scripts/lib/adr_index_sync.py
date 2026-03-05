@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 
 from framework.scripts.lib.adr_markdown_helpers import (
     _extract_issue_url,
@@ -16,6 +18,23 @@ from framework.scripts.lib.adr_markdown_helpers import (
 )
 
 _ADR_ID_FULL_RE = re.compile(r"^ADR-\d{3,}$")
+
+
+def _validate_date_format(value: str, path: Path) -> str:
+    try:
+        date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"invalid date format: {value} in {path}") from exc
+    return value
+
+
+def _validate_issue_url(value: str, path: Path) -> str:
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(f"invalid issue URL: {value} in {path}")
+    if any(char.isspace() for char in value):
+        raise ValueError(f"invalid issue URL: {value} in {path}")
+    return value
 
 
 @dataclass(frozen=True)
@@ -39,7 +58,8 @@ def load_adr_record(repo_root: Path, path: Path) -> AdrRecord:
         raise ValueError(f"invalid ADR ID format: {adr_id} in {path}")
     title = _required_value(sections, "title", path)
     status = _required_value(sections, "status", path).lower()
-    date = _required_value(sections, "date", path)
+    date_value = _required_value(sections, "date", path)
+    date_value = _validate_date_format(date_value, path)
     decision_summary = _first_section_value(
         _first_matching_section_text(sections, ["decision summary", "decision"])
     )
@@ -49,6 +69,7 @@ def load_adr_record(repo_root: Path, path: Path) -> AdrRecord:
     issue_url = _extract_issue_url(sections.get("references", ""))
     if issue_url is None:
         raise ValueError(f"missing reference value: Issue in {path}")
+    issue_url = _validate_issue_url(issue_url, path)
 
     supersedes = _extract_supersedes(_first_section_with_prefix(sections, "supersedes"))
 
@@ -56,7 +77,7 @@ def load_adr_record(repo_root: Path, path: Path) -> AdrRecord:
         adr_id=adr_id,
         title=title,
         status=status,
-        date=date,
+        date=date_value,
         file_path=_relative_path(repo_root, path),
         decision_summary=decision_summary,
         issue_url=issue_url,

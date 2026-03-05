@@ -102,6 +102,62 @@ class SyncAdrIndexTests(unittest.TestCase):
             self.assertIn("| ADR-001 |", decisions_text)
             self.assertIn("https://example.com/issues/1", decisions_text)
 
+    def test_rejects_non_iso_date_and_non_uri_issue(self) -> None:
+        with tempfile.TemporaryDirectory(dir=REPO_ROOT) as repo_tmp:
+            repo_root = Path(repo_tmp)
+            adr_file = repo_root / "docs/adr/ADR-010-invalid.md"
+            adr_file.parent.mkdir(parents=True, exist_ok=True)
+            adr_file.write_text(
+                "\n".join(
+                    [
+                        "# ADR",
+                        "",
+                        "## ADR ID",
+                        "- ADR-010",
+                        "",
+                        "## Title",
+                        "Invalid ADR metadata",
+                        "",
+                        "## Status",
+                        "- accepted",
+                        "",
+                        "## Date",
+                        "- not-a-date",
+                        "",
+                        "## Decision Summary",
+                        "Invalid metadata should fail.",
+                        "",
+                        "## References",
+                        "- Issue: not-a-uri",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--adr-dir",
+                    str(repo_root / "docs/adr"),
+                    "--index-path",
+                    str(repo_root / "docs/adr/index.json"),
+                    "--decisions-path",
+                    str(repo_root / "docs/decisions.md"),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=str(repo_root),
+                timeout=60,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertTrue(
+                "invalid date format" in result.stderr or "invalid issue URL" in result.stderr
+            )
+
     def test_fails_fast_when_adr_dir_is_outside_repository_root(self) -> None:
         with (
             tempfile.TemporaryDirectory() as outside_tmp,

@@ -158,6 +158,63 @@ class SyncAdrIndexTests(unittest.TestCase):
                 "invalid date format" in result.stderr or "invalid issue URL" in result.stderr
             )
 
+    def test_rejects_invalid_supersedes_token(self) -> None:
+        with tempfile.TemporaryDirectory(dir=REPO_ROOT) as repo_tmp:
+            repo_root = Path(repo_tmp)
+            adr_file = repo_root / "docs/adr/ADR-011-invalid-supersedes.md"
+            adr_file.parent.mkdir(parents=True, exist_ok=True)
+            adr_file.write_text(
+                "\n".join(
+                    [
+                        "# ADR",
+                        "",
+                        "## ADR ID",
+                        "- ADR-011",
+                        "",
+                        "## Title",
+                        "Invalid supersedes token",
+                        "",
+                        "## Status",
+                        "- accepted",
+                        "",
+                        "## Date",
+                        "- 2026-03-05",
+                        "",
+                        "## Decision Summary",
+                        "Supersedes must be strict ADR IDs.",
+                        "",
+                        "## Supersedes (Optional)",
+                        "- ADR-12",
+                        "",
+                        "## References",
+                        "- Issue: https://example.com/issues/11",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--adr-dir",
+                    str(repo_root / "docs/adr"),
+                    "--index-path",
+                    str(repo_root / "docs/adr/index.json"),
+                    "--decisions-path",
+                    str(repo_root / "docs/decisions.md"),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=str(repo_root),
+                timeout=60,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid supersedes token", result.stderr)
+
     def test_fails_fast_when_adr_dir_is_outside_repository_root(self) -> None:
         with (
             tempfile.TemporaryDirectory() as outside_tmp,

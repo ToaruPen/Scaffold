@@ -634,6 +634,78 @@ class ValidateAdrIndexTests(unittest.TestCase):
             body = json.loads(result.stdout)
             self.assertIn("adr_metadata_mismatch", body["mismatch_reasons"])
 
+    def test_fails_when_body_supersedes_contains_invalid_token(self) -> None:
+        with tempfile.TemporaryDirectory() as repo_tmp:
+            repo_root = Path(repo_tmp)
+            invalid_supersedes_path = repo_root / "docs/adr/ADR-060.md"
+            invalid_supersedes_path.parent.mkdir(parents=True, exist_ok=True)
+            invalid_supersedes_path.write_text(
+                "\n".join(
+                    [
+                        "# ADR",
+                        "",
+                        "## ADR ID",
+                        "- ADR-060",
+                        "",
+                        "## Title",
+                        "Invalid Supersedes",
+                        "",
+                        "## Status",
+                        "- accepted",
+                        "",
+                        "## Date",
+                        "- 2026-03-05",
+                        "",
+                        "## Decision Summary",
+                        "Use strict supersedes IDs.",
+                        "",
+                        "## Supersedes (Optional)",
+                        "- ADR-12",
+                        "",
+                        "## References",
+                        "- Issue: https://example.com/issues/1",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            _write_decisions_index(
+                repo_root / "docs/decisions.md",
+                [
+                    {
+                        "adr_id": "ADR-060",
+                        "title": "Invalid Supersedes",
+                        "decision_summary": "Use strict supersedes IDs.",
+                        "issue_url": "https://example.com/issues/1",
+                        "file_path": "docs/adr/ADR-060.md",
+                    }
+                ],
+            )
+            payload = {
+                "request_id": "req-adr-19",
+                "scope_id": "issue-14",
+                "run_id": "run-19",
+                "artifact_path": "docs/adr/index.json",
+                "adr_index": {
+                    "entries": [
+                        {
+                            "adr_id": "ADR-060",
+                            "title": "Invalid Supersedes",
+                            "status": "accepted",
+                            "date": "2026-03-05",
+                            "file_path": "docs/adr/ADR-060.md",
+                            "decision_summary": "Use strict supersedes IDs.",
+                            "issue_url": "https://example.com/issues/1",
+                            "supersedes": ["ADR-060"],
+                        }
+                    ]
+                },
+            }
+            result = self._run(payload, cwd=repo_root)
+            self.assertEqual(result.returncode, 2)
+            body = json.loads(result.stdout)
+            self.assertIn("adr_metadata_missing", body["mismatch_reasons"])
+
     def test_fails_with_invalid_input(self) -> None:
         payload = {
             "request_id": "req-adr-3",

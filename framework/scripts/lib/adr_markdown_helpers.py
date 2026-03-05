@@ -70,7 +70,7 @@ def _extract_supersedes(text: str) -> list[str]:
                 continue
             normalized = _normalize_adr_id(token)
             if _ADR_ID_RE.fullmatch(normalized) is None:
-                continue
+                raise ValueError(f"invalid supersedes token: {token}")
             if normalized not in values:
                 values.append(normalized)
     return values

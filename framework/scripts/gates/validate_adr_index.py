@@ -115,7 +115,10 @@ def _load_adr_metadata(path: Path) -> dict[str, Any] | None:
         _first_matching_section_text(sections, ["decision summary", "decision"])
     )
     issue_url = _extract_issue_url(sections.get("references", ""))
-    supersedes = _extract_supersedes(_first_section_with_prefix(sections, "supersedes"))
+    try:
+        supersedes = _extract_supersedes(_first_section_with_prefix(sections, "supersedes"))
+    except ValueError:
+        return None
     if (
         adr_id is None
         or title is None

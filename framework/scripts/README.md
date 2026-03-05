@@ -65,10 +65,6 @@ Distributable script layer for consumer repositories.
     - CLI: `--codex-reasoning-effort`, `--claude-effort`
     - Env: `SCAFFOLD_CODEX_REASONING_EFFORT`, `SCAFFOLD_CLAUDE_EFFORT`
 
-- `framework/scripts/ci/run_test_review.py`
-  - Runs stage-specific `test-review` gate validation plus `review-evidence-link`.
-  - Writes artifacts under `.scaffold/review_results/<scope_id>/<run_id>/test-review/`.
-
 - `framework/scripts/ci/run_final_review.py`
   - Runs stage-specific `final-review` gate validation plus `review-evidence-link`, `drift-detection`, and `adr-index-consistency`.
   - Publishes gate result entrypoints for `final_review_gate_result`, `review_evidence_gate_result`, `drift_detection_gate_result`, and `adr_index_gate_result` in `outputs/index.json` and `outputs/run-metadata.json`.
@@ -117,11 +113,6 @@ Distributable script layer for consumer repositories.
   - Required top-level inputs: `request_id`, `scope_id`, `run_id`, `artifact_path`, `estimate_approval`, `mode_selection`.
   - `custom` mode requires `custom_contract_ref`.
   - Exit code: `0` (valid), `2` (not approved/mismatch/invalid input).
-
-- `framework/scripts/gates/validate_test_review.py`
-  - Validates `test-review` evidence status and commit/range linkage.
-  - Required top-level inputs: `request_id`, `scope_id`, `run_id`, `artifact_path`, `expected`, `review`.
-  - Exit code: `0` (approved/consistent), `2` (failed/mismatch/invalid input).
 
 - `framework/scripts/gates/validate_review_cycle.py`
   - Validates `review-cycle` evidence status and commit/range linkage.

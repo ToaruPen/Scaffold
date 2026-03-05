@@ -64,9 +64,6 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "test_review": {
-          "$ref": "#/$defs/ReviewStageEvidence"
-        },
         "review_cycle": {
           "$ref": "#/$defs/ReviewStageEvidence"
         },

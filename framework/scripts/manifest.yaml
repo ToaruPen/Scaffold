@@ -56,12 +56,6 @@ contracts:
     result_schema: framework/.agent/schemas/gates/mode-selection-result.schema.json
     status: implemented
 
-  - id: test-review-evidence
-    description: test-review evidence exists and passes contract checks
-    validator: framework/scripts/gates/validate_test_review.py
-    result_schema: framework/.agent/schemas/gates/test-review-result.schema.json
-    status: implemented
-
   - id: review-cycle-evidence
     description: review-cycle evidence exists and passes contract checks
     validator: framework/scripts/gates/validate_review_cycle.py
@@ -69,7 +63,7 @@ contracts:
     status: implemented
 
   - id: final-review-consistency
-    description: final-review validates drift and overall completion consistency
+    description: final-review evidence status and commit/range linkage are consistent
     validator: framework/scripts/gates/validate_final_review.py
     result_schema: framework/.agent/schemas/gates/final-review-result.schema.json
     status: implemented
@@ -141,11 +135,6 @@ must_command_contracts:
       - scope-lock
       - overlap-safety
 
-  /test-review:
-    requires:
-      - test-review-evidence
-      - review-evidence-link
-
   /review-cycle:
     requires:
       - review-cycle-evidence
@@ -181,7 +170,6 @@ command_tiers:
   /impl: core
   /tdd: core
   /worktree: core
-  /test-review: core
   /review-cycle: core
   /final-review: core
   /create-pr: core

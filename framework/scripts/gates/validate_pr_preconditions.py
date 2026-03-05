@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-REQUIRED_STAGE_KEYS = ("test_review", "review_cycle", "final_review")
+REQUIRED_STAGE_KEYS = ("review_cycle", "final_review")
 
 
 def _error(code: str, message: str) -> dict[str, Any]:

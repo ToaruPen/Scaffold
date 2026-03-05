@@ -40,12 +40,6 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
             "expected": {"head_sha": "abcdef1", "base_sha": "1234567"},
             "scope_lock": {"matched": True, "head_sha": "abcdef1", "base_sha": "1234567"},
             "review_evidence": {
-                "test_review": {
-                    "status": "pass",
-                    "head_sha": "abcdef1",
-                    "base_sha": "1234567",
-                    "artifact_path": "artifacts/reviews/issue-8/run-1/test-review.json",
-                },
                 "review_cycle": {
                     "status": "pass",
                     "head_sha": "abcdef1",
@@ -76,11 +70,6 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
             "expected": {"head_sha": "abcdef1"},
             "scope_lock": {"matched": False, "head_sha": "abcdef1"},
             "review_evidence": {
-                "test_review": {
-                    "status": "pass",
-                    "head_sha": "abcdef1",
-                    "artifact_path": "x",
-                },
                 "review_cycle": {
                     "status": "pass",
                     "head_sha": "abcdef1",
@@ -109,12 +98,6 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
             "expected": {"head_sha": "abcdef1", "base_sha": "1234567"},
             "scope_lock": {"matched": True, "head_sha": "abcdef1", "base_sha": "9999999"},
             "review_evidence": {
-                "test_review": {
-                    "status": "pass",
-                    "head_sha": "abcdef1",
-                    "base_sha": "1234567",
-                    "artifact_path": "x",
-                },
                 "review_cycle": {
                     "status": "pass",
                     "head_sha": "abcdef1",
@@ -146,11 +129,6 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
             "expected": {"head_sha": "abcdef1"},
             "scope_lock": {"matched": True, "head_sha": "abcdef1"},
             "review_evidence": {
-                "test_review": {
-                    "status": "pass",
-                    "head_sha": "abcdef1",
-                    "artifact_path": "x",
-                },
                 "review_cycle": {
                     "status": "pass",
                     "head_sha": "abcdef1",

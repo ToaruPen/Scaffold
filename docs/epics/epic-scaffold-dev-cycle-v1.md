@@ -132,7 +132,7 @@ to: estimation artifact
 主要データフロー-2
 from: 実装差分 + テスト結果
 to: review artifacts
-用途: `tests-review` / `review-cycle` / `final-review` 証跡化
+用途: `review-cycle` / `final-review` 証跡化
 プロトコル: JSON/Markdown + CI
 
 主要データフロー-3
@@ -292,8 +292,8 @@ Issue名: estimation契約と承認記録
 
 Issue-4
 番号: 4
-Issue名: tests-reviewゲート実装
-概要: テスト妥当性の決定論チェック
+Issue名: review-evidence-linkゲート実装
+概要: commit/range整合の決定論チェック
 推定行数: 250-400行
 依存: #3
 
@@ -508,7 +508,7 @@ PRDの値: Unknown
 Must（初期導入）
 - `/research`, `/create-prd`, `/create-epic`, `/create-issues`
 - `/estimation`, `/impl`, `/tdd`
-- `/worktree`, `/test-review`, `/review-cycle`, `/final-review`, `/create-pr`, `/pr-bots-review`
+- `/worktree`, `/review-cycle`, `/final-review`, `/create-pr`, `/pr-bots-review`
 
 Should（第二段階）
 - `/sync-docs`, `/debug`, `/cleanup`, `/lint-setup`

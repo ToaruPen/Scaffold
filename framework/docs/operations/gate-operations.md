@@ -40,21 +40,19 @@ Exit codes:
 
 Review chain stages:
 
-1. test-review
-2. review-cycle
-3. final-review
+1. review-cycle
+2. final-review
 
 Runners:
 
-- `framework/scripts/ci/run_test_review.py`
 - `framework/scripts/ci/run_review_engine.py`
 - `framework/scripts/ci/run_final_review.py`
 
 Each runner writes artifacts under `.scaffold/review_results/<scope_id>/<run_id>/<stage>/`.
 
-- test-review stage: `.scaffold/review_results/<scope_id>/<run_id>/test-review/`
 - review-cycle stage: `.scaffold/review_results/<scope_id>/<run_id>/review-cycle/`
 - final-review stage: `.scaffold/review_results/<scope_id>/<run_id>/final-review/`
+- PR preconditions consume stage keys as `review_cycle` and `final_review` (snake_case), while gate result payloads use `review-cycle` and `final-review` in the `stage` field.
 
 ## Waiver Operations
 

@@ -26,7 +26,6 @@ Scaffoldで、Agentic-SDDのコマンド/スキルをどこまで流用するか
 - `/impl`
 - `/tdd`
 - `/worktree`
-- `/test-review`
 - `/review-cycle`
 - `/final-review`
 - `/create-pr`

@@ -37,7 +37,7 @@ AIエージェント開発では、手順を厳密に縛りすぎると保守コ
 
 - PRD/Epicからissue分割、見積、実装、レビュー、PRまで一貫運用できる
 - 並列実装時の衝突を事前/事後に機械検知し、物理的にブロックできる
-- `tests-review` / `review-cycle` / `final-review` の証跡を残し、ドリフト検知できる
+- `review-cycle` / `final-review` の証跡を残し、ドリフト検知できる
 - PR Botレビューをイベント駆動で取り込み、修正ループを回せる
 
 ### Q4: 完成と言える状態は？
@@ -48,7 +48,7 @@ AIエージェント開発では、手順を厳密に縛りすぎると保守コ
 2. issue作成（並列可否判定を含む）
 3. issue単位branch作成（重複対象はfail-fast）
 4. 見積作成と実装モード選択（impl/tdd/custom）
-5. 実装後に `tests-review` / `review-cycle` / `final-review` を通過
+5. 実装後に `review-cycle` / `final-review` を通過
 6. コミット・プッシュ・PR作成
 7. PR Bot指摘をイベント駆動で反映し、再レビュー
 8. 最終的に人間がPRを承認可能
@@ -167,7 +167,7 @@ FR-3
 
 FR-4
 機能名: レビュー証跡管理
-説明: `tests-review` / `review-cycle` / `final-review` の結果をcommit/rangeと紐付けて保存する
+説明: `review-cycle` / `final-review` の結果をcommit/rangeと紐付けて保存する
 優先度: Must
 
 FR-5
@@ -193,7 +193,7 @@ FR-7
 
 - [ ] AC-1: issue作成時に並列可否判定が実行され、重複なしのissueのみ `parallel-ok` として開始できる
 - [ ] AC-2: issueごとに見積成果物と実装モード選択根拠が保存され、実装開始前に参照できる
-- [ ] AC-3: `tests-review` / `review-cycle` / `final-review` の結果がcommit/rangeに紐づいて保存される
+- [ ] AC-3: `review-cycle` / `final-review` の結果がcommit/rangeに紐づいて保存される
 - [ ] AC-4: PR Bot指摘の取り込み→修正→再提出ループを1回以上再現できる
 
 ### 異常系（必須: 最低1つ）

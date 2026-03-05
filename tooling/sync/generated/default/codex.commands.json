@@ -17,7 +17,6 @@
       "/research",
       "/review-cycle",
       "/tdd",
-      "/test-review",
       "/worktree"
     ],
     "conditional": [
@@ -36,7 +35,6 @@
     "/research",
     "/review-cycle",
     "/tdd",
-    "/test-review",
     "/worktree"
   ]
 }

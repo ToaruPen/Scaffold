@@ -1,4 +1,4 @@
-.PHONY: install-dev lint format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range command-surfaces command-surfaces-conditional
+.PHONY: install-dev lint format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range command-surfaces command-surfaces-conditional agent-rules
 
 install-dev:
 	python3 -m pip install -r requirements-dev.txt
@@ -29,6 +29,9 @@ command-surfaces:
 
 command-surfaces-conditional:
 	python3 tooling/sync/generate_command_surfaces.py --output-root tooling/sync/generated/with-conditional --agent all --enable-conditional
+
+agent-rules:
+	python3 tooling/sync/generate_agent_rules.py
 
 pre-commit:
 	pre-commit run --all-files

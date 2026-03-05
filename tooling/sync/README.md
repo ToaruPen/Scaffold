@@ -66,3 +66,39 @@ Output profiles:
 
 When `--output-root` is omitted, the script chooses the profile directory
 automatically (`default` without `--enable-conditional`, `with-conditional` with it).
+
+## Agent Rule Sync
+
+Generate agent-specific append files from canonical rule sources.
+
+Canonical sources:
+
+- `docs/agent-rules/project-base.md` (project-specific base rules)
+- `docs/agent-rules/development-cycle.md` (development-cycle rules)
+
+Generated outputs:
+
+- `Scaffold_AGENTS.append.md`
+- `Scaffold_CLAUDE.append.md`
+
+Run manually:
+
+```bash
+python3 tooling/sync/generate_agent_rules.py
+```
+
+If a non-generated append file already exists, the script fails fast instead of
+overwriting it. Use `--force-overwrite-existing` only when intentional:
+
+```bash
+python3 tooling/sync/generate_agent_rules.py --force-overwrite-existing
+```
+
+Or via Make target:
+
+```bash
+make agent-rules
+```
+
+You can override output paths with `--agents-append-path` and
+`--claude-append-path`.

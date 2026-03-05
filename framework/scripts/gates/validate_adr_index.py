@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import re
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT) not in sys.path:
@@ -78,6 +80,21 @@ def _resolve_adr_file_path(repo_root: Path, file_path: str) -> Path | None:
 def _validate_adr_id_format(value: str, parent: str) -> str:
     if _ADR_ID_FULL_RE.match(value) is None:
         raise ValueError(f"invalid ADR ID format: {parent}: {value}")
+    return value
+
+
+def _validate_date_format(value: str, parent: str) -> str:
+    try:
+        date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"invalid date format: {parent}: {value}") from exc
+    return value
+
+
+def _validate_issue_url_format(value: str, parent: str) -> str:
+    parsed = urlparse(value)
+    if not parsed.scheme or not parsed.netloc:
+        raise ValueError(f"invalid issue_url format: {parent}: {value}")
     return value
 
 
@@ -204,10 +221,13 @@ def _parse_index_entry(entry: dict[str, Any], parent: str) -> dict[str, Any]:
         "adr_id": normalized_adr_id,
         "title": require_text(entry, "title", parent),
         "status": require_text(entry, "status", parent),
-        "date": require_text(entry, "date", parent),
+        "date": _validate_date_format(require_text(entry, "date", parent), f"{parent}.date"),
         "file_path": require_text(entry, "file_path", parent),
         "decision_summary": require_text(entry, "decision_summary", parent),
-        "issue_url": require_text(entry, "issue_url", parent),
+        "issue_url": _validate_issue_url_format(
+            require_text(entry, "issue_url", parent),
+            f"{parent}.issue_url",
+        ),
     }
     supersedes = _optional_list_of_texts(entry, "supersedes", parent)
     if supersedes:

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,7 @@ _ALLOWED_BINARIES = {
     "codex",
     "git",
     "python3",
+    Path(sys.executable).name,
 }
 
 
@@ -115,7 +117,7 @@ def run_gate(
     policy_path: Path | None = None,
 ) -> int:
     command = [
-        "python3",
+        sys.executable,
         str(gate_script),
         "--input",
         str(input_path),

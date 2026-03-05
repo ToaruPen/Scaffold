@@ -17,7 +17,7 @@ class ValidateResearchContractTests(unittest.TestCase):
             input_path = Path(tmp) / "input.json"
             output_path = Path(tmp) / "output.json"
             input_path.write_text(json.dumps(payload), encoding="utf-8")
-            return subprocess.run(
+            result = subprocess.run(
                 [
                     sys.executable,
                     str(SCRIPT),
@@ -30,6 +30,8 @@ class ValidateResearchContractTests(unittest.TestCase):
                 text=True,
                 check=False,
             )
+            self.assertEqual(output_path.read_text(encoding="utf-8"), result.stdout)
+            return result
 
     def test_passes_with_valid_research_payload(self) -> None:
         payload = {

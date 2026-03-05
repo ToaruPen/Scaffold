@@ -70,16 +70,22 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         mismatch_reasons.append("undeclared_change_detected")
 
     passed = len(undeclared_additions) == 0 and not missing_declaration_evidence
+    sanitized_declared_targets = [
+        target for target in declared_targets if target != _MISSING_DECLARED_TARGETS_SENTINEL
+    ]
+    sanitized_unused_declarations = [
+        target for target in unused_declarations if target != _MISSING_DECLARED_TARGETS_SENTINEL
+    ]
     result: dict[str, Any] = {
         "request_id": request_id,
         "scope_id": scope_id,
         "run_id": run_id,
         "status": "pass" if passed else "fail",
         "artifact_path": artifact_path,
-        "declared_targets": declared_targets,
+        "declared_targets": sanitized_declared_targets,
         "actual_changes": actual_changes,
         "undeclared_additions": undeclared_additions,
-        "unused_declarations": unused_declarations,
+        "unused_declarations": sanitized_unused_declarations,
         "mismatch_reasons": mismatch_reasons,
     }
     if not passed:

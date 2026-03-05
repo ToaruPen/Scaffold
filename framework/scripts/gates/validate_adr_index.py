@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import re
 import sys
-from datetime import date
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -20,6 +19,7 @@ from framework.scripts.lib.adr_markdown_helpers import (
     _first_section_value,
     _first_section_with_prefix,
     _normalize_adr_id,
+    validate_date_format,
 )
 from framework.scripts.lib.exit_codes import EXIT_SUCCESS, EXIT_VALIDATION_FAILED
 from framework.scripts.lib.gate_helpers import (
@@ -34,7 +34,6 @@ from framework.scripts.lib.gate_helpers import (
 _DECISIONS_HEADER = ["ADR ID", "Title", "Decision Summary", "Issue", "ADR Path"]
 _DECISIONS_COLS = len(_DECISIONS_HEADER)
 _ADR_ID_FULL_RE = re.compile(r"^ADR-\d{3,}$")
-_DATE_FULL_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _optional_list_of_texts(obj: dict[str, Any], key: str, parent: str = "") -> list[str] | None:
@@ -84,16 +83,6 @@ def _validate_adr_id_format(value: str, parent: str) -> str:
     return value
 
 
-def _validate_date_format(value: str, parent: str) -> str:
-    if _DATE_FULL_RE.match(value) is None:
-        raise ValueError(f"invalid date format: {parent}: {value}")
-    try:
-        date.fromisoformat(value)
-    except ValueError as exc:
-        raise ValueError(f"invalid date format: {parent}: {value}") from exc
-    return value
-
-
 def _validate_issue_url_format(value: str, parent: str) -> str:
     parsed = urlparse(value)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -133,7 +122,7 @@ def _load_adr_metadata(path: Path) -> dict[str, Any] | None:
         return None
 
     try:
-        normalized_date = _validate_date_format(date, f"adr body {path}")
+        normalized_date = validate_date_format(date, f"adr body {path}")
         normalized_issue_url = _validate_issue_url_format(issue_url, f"adr body {path}")
     except ValueError:
         return None
@@ -235,7 +224,7 @@ def _parse_index_entry(entry: dict[str, Any], parent: str) -> dict[str, Any]:
         "adr_id": normalized_adr_id,
         "title": require_text(entry, "title", parent),
         "status": require_text(entry, "status", parent),
-        "date": _validate_date_format(require_text(entry, "date", parent), f"{parent}.date"),
+        "date": validate_date_format(require_text(entry, "date", parent), f"{parent}.date"),
         "file_path": require_text(entry, "file_path", parent),
         "decision_summary": require_text(entry, "decision_summary", parent),
         "issue_url": _validate_issue_url_format(

@@ -72,6 +72,42 @@ class GenerateAgentRulesTests(unittest.TestCase):
             self.assertIn("# CLAUDE.md", claude_append)
             self.assertIn("## Cycle", claude_append)
 
+    def test_rewrites_heading_when_h1_is_not_first_line(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            project_base = tmp_path / "project-base.md"
+            cycle_rules = tmp_path / "development-cycle.md"
+            agents_append_path = tmp_path / "Scaffold_AGENTS.append.md"
+            claude_append_path = tmp_path / "Scaffold_CLAUDE.append.md"
+
+            project_base.write_text(
+                "<!-- preface -->\n\n# Original heading\n\n## Base\n- base rule\n",
+                encoding="utf-8",
+            )
+            cycle_rules.write_text("## Cycle\n- cycle rule\n", encoding="utf-8")
+
+            argv = [
+                "generate_agent_rules.py",
+                "--project-base",
+                str(project_base),
+                "--cycle-rules",
+                str(cycle_rules),
+                "--agents-append-path",
+                str(agents_append_path),
+                "--claude-append-path",
+                str(claude_append_path),
+            ]
+
+            with patch.object(sys, "argv", argv):
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    exit_code = self.script.main()
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn("# AGENTS.md", agents_append_path.read_text(encoding="utf-8"))
+            self.assertIn("# CLAUDE.md", claude_append_path.read_text(encoding="utf-8"))
+
     def test_fails_if_non_generated_append_file_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from pathlib import Path
 
 _ADR_ID_RE = re.compile(r"^ADR-\d{3,}$")
+_DATE_FULL_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _normalize_adr_id(value: str) -> str:
@@ -55,6 +57,16 @@ def _extract_issue_url(text: str) -> str | None:
         if value:
             return value
     return None
+
+
+def validate_date_format(value: str, context: str) -> str:
+    if _DATE_FULL_RE.match(value) is None:
+        raise ValueError(f"invalid date format: {context}: {value}")
+    try:
+        date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"invalid date format: {context}: {value}") from exc
+    return value
 
 
 def _extract_supersedes(text: str) -> list[str]:

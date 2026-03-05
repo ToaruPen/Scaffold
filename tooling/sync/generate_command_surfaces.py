@@ -68,6 +68,13 @@ def _extract_tiers(manifest: dict[str, Any]) -> tuple[list[str], list[str]]:
     command_tiers = _require_mapping(manifest, "command_tiers")
     command_keys_str = {str(command) for command in command_tiers}
 
+    invalid_must_commands = sorted(
+        str(command) for command in must_command_contracts if not isinstance(command, str)
+    )
+    if invalid_must_commands:
+        details = ", ".join(invalid_must_commands)
+        raise ValueError(f"must_command_contracts contains invalid entries: {details}")
+
     invalid_tiers = sorted(
         str(command)
         for command, tier in command_tiers.items()
@@ -77,9 +84,8 @@ def _extract_tiers(manifest: dict[str, Any]) -> tuple[list[str], list[str]]:
         details = ", ".join(invalid_tiers)
         raise ValueError(f"command_tiers contains invalid entries: {details}")
 
-    missing = sorted(
-        str(command) for command in must_command_contracts if str(command) not in command_keys_str
-    )
+    must_command_keys = set(must_command_contracts)
+    missing = sorted(command for command in must_command_keys if command not in command_keys_str)
     if missing:
         details = ", ".join(missing)
         raise ValueError(f"must_command_contracts missing tier classification: {details}")

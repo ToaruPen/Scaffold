@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -49,8 +50,11 @@ def _rewrite_primary_heading(markdown: str, heading: str) -> str:
     lines = markdown.splitlines()
     if not lines:
         return markdown
-    if lines[0].startswith("# "):
-        lines[0] = f"# {heading}"
+    for index, line in enumerate(lines):
+        if re.match(r"^\s*#\s+", line):
+            lines[index] = f"# {heading}"
+            return "\n".join(lines)
+    lines.insert(0, f"# {heading}")
     return "\n".join(lines)
 
 

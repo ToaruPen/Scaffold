@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -15,20 +14,10 @@ from framework.scripts.lib.adr_markdown_helpers import (
     _first_section_with_prefix,
     _relative_path,
     _required_value,
+    validate_date_format,
 )
 
 _ADR_ID_FULL_RE = re.compile(r"^ADR-\d{3,}$")
-_DATE_FULL_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-
-def _validate_date_format(value: str, path: Path) -> str:
-    if _DATE_FULL_RE.match(value) is None:
-        raise ValueError(f"invalid date format: {value} in {path}")
-    try:
-        date.fromisoformat(value)
-    except ValueError as exc:
-        raise ValueError(f"invalid date format: {value} in {path}") from exc
-    return value
 
 
 def _validate_issue_url(value: str, path: Path) -> str:
@@ -49,7 +38,7 @@ class AdrRecord:
     file_path: str
     decision_summary: str
     issue_url: str
-    supersedes: list[str]
+    supersedes: tuple[str, ...]
 
 
 def load_adr_record(repo_root: Path, path: Path) -> AdrRecord:
@@ -62,7 +51,7 @@ def load_adr_record(repo_root: Path, path: Path) -> AdrRecord:
     title = _required_value(sections, "title", path)
     status = _required_value(sections, "status", path).lower()
     date_value = _required_value(sections, "date", path)
-    date_value = _validate_date_format(date_value, path)
+    date_value = validate_date_format(date_value, str(path))
     decision_summary = _first_section_value(
         _first_matching_section_text(sections, ["decision summary", "decision"])
     )
@@ -84,7 +73,7 @@ def load_adr_record(repo_root: Path, path: Path) -> AdrRecord:
         file_path=_relative_path(repo_root, path),
         decision_summary=decision_summary,
         issue_url=issue_url,
-        supersedes=supersedes,
+        supersedes=tuple(supersedes),
     )
 
 

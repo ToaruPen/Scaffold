@@ -7,8 +7,8 @@
     "gate_id": "drift-detection",
     "reason": "explain why exception is required",
     "approved_by": "<approver>",
-    "approved_at": "2026-03-04T00:00:00Z",
-    "expiry": "2026-03-31T00:00:00Z",
+    "approved_at": "{{approved_at_rfc3339_YYYY-MM-DDTHH:MM:SSZ}}",
+    "expiry": "{{expiry_rfc3339_YYYY-MM-DDTHH:MM:SSZ}}",
     "scope_restriction": "single-run-only"
   }
 }

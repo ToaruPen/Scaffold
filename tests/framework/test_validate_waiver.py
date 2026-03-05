@@ -8,7 +8,9 @@ import unittest
 from collections.abc import Mapping
 from pathlib import Path
 
-SCRIPT = Path("framework/scripts/gates/validate_waiver.py")
+TEST_DIR = Path(__file__).resolve().parent
+REPO_ROOT = TEST_DIR.parents[1]
+SCRIPT = REPO_ROOT / "framework/scripts/gates/validate_waiver.py"
 
 
 class ValidateWaiverTests(unittest.TestCase):

@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
 from typing import Protocol, cast
@@ -39,6 +40,68 @@ def _load_runner_module() -> ModuleType:
     return module
 
 
+def _run_runner_main(
+    *,
+    runner: ModuleType,
+    argv: list[str],
+    cwd: Path,
+    review_payload: Mapping[str, object],
+    gate_exit_codes: list[int] | None = None,
+) -> int:
+    remaining_gate_exit_codes = list(gate_exit_codes or [])
+
+    def fake_run_engine(
+        *, config: object, repo_root: Path, prompt_text: str, raw_output_path: Path
+    ) -> str:
+        del config, repo_root, prompt_text
+        raw_output_path.write_text(json.dumps(review_payload), encoding="utf-8")
+        return json.dumps(review_payload)
+
+    def fake_run_gate(
+        *,
+        repo_root: Path,
+        gate_script: Path,
+        input_path: Path,
+        output_path: Path,
+        policy_path: Path | None = None,
+    ) -> int:
+        del repo_root, gate_script, input_path, policy_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("{}\n", encoding="utf-8")
+        if remaining_gate_exit_codes:
+            return remaining_gate_exit_codes.pop(0)
+        return 0
+
+    def fake_run_drift_and_adr_gates(**kwargs: object) -> tuple[int, int, Path, Path, Path, Path]:
+        config = _extract_gate_config(kwargs)
+        intermediate_dir = config.intermediate_dir
+        output_dir = config.output_dir
+        drift_input = intermediate_dir / "drift-detection.input.json"
+        drift_result = output_dir / "drift-detection.result.json"
+        adr_input = intermediate_dir / "adr-index.input.json"
+        adr_result = output_dir / "adr-index.result.json"
+        for path in (drift_input, drift_result, adr_input, adr_result):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}\n", encoding="utf-8")
+        return 0, 0, drift_input, drift_result, adr_input, adr_result
+
+    with (
+        patch.object(runner.shared, "_parse_args", side_effect=runner.shared._parse_args),
+        patch.object(runner.shared, "_git_short_sha", side_effect=["abc1234", "def5678"]),
+        patch.object(runner.shared, "_run_engine", side_effect=fake_run_engine),
+        patch.object(runner.shared, "_validate_schema", return_value=None),
+        patch.object(runner.shared, "_run_gate", side_effect=fake_run_gate),
+        patch.object(runner, "run_drift_and_adr_gates", side_effect=fake_run_drift_and_adr_gates),
+        patch.object(sys, "argv", argv),
+    ):
+        old_cwd = Path.cwd()
+        os.chdir(cwd)
+        try:
+            return cast(int, runner.main())
+        finally:
+            os.chdir(old_cwd)
+
+
 class RunFinalReviewTests(unittest.TestCase):
     runner: ModuleType
 
@@ -48,41 +111,6 @@ class RunFinalReviewTests(unittest.TestCase):
 
     def test_main_creates_stage_specific_layout(self) -> None:
         review_payload = {"status": "approved", "summary": "ok", "findings": []}
-
-        def fake_run_engine(
-            *, config: object, repo_root: Path, prompt_text: str, raw_output_path: Path
-        ) -> str:
-            del config, repo_root, prompt_text
-            raw_output_path.write_text(json.dumps(review_payload), encoding="utf-8")
-            return json.dumps(review_payload)
-
-        def fake_run_gate(
-            *,
-            repo_root: Path,
-            gate_script: Path,
-            input_path: Path,
-            output_path: Path,
-            policy_path: Path | None = None,
-        ) -> int:
-            del repo_root, gate_script, input_path, policy_path
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text("{}\n", encoding="utf-8")
-            return 0
-
-        def fake_run_drift_and_adr_gates(
-            **kwargs: object,
-        ) -> tuple[int, int, Path, Path, Path, Path]:
-            config = _extract_gate_config(kwargs)
-            intermediate_dir = config.intermediate_dir
-            output_dir = config.output_dir
-            drift_input = intermediate_dir / "drift-detection.input.json"
-            drift_result = output_dir / "drift-detection.result.json"
-            adr_input = intermediate_dir / "adr-index.input.json"
-            adr_result = output_dir / "adr-index.result.json"
-            for path in (drift_input, drift_result, adr_input, adr_result):
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("{}\n", encoding="utf-8")
-            return 0, 0, drift_input, drift_result, adr_input, adr_result
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -101,30 +129,12 @@ class RunFinalReviewTests(unittest.TestCase):
                 "--results-dir",
                 ".scaffold/review_results",
             ]
-
-            with (
-                patch.object(
-                    self.runner.shared, "_parse_args", side_effect=self.runner.shared._parse_args
-                ),
-                patch.object(
-                    self.runner.shared, "_git_short_sha", side_effect=["abc1234", "def5678"]
-                ),
-                patch.object(self.runner.shared, "_run_engine", side_effect=fake_run_engine),
-                patch.object(self.runner.shared, "_validate_schema", return_value=None),
-                patch.object(self.runner.shared, "_run_gate", side_effect=fake_run_gate),
-                patch.object(
-                    self.runner,
-                    "run_drift_and_adr_gates",
-                    side_effect=fake_run_drift_and_adr_gates,
-                ),
-                patch.object(sys, "argv", argv),
-            ):
-                old_cwd = Path.cwd()
-                os.chdir(tmp_path)
-                try:
-                    exit_code = self.runner.main()
-                finally:
-                    os.chdir(old_cwd)
+            exit_code = _run_runner_main(
+                runner=self.runner,
+                argv=argv,
+                cwd=tmp_path,
+                review_payload=review_payload,
+            )
 
             self.assertEqual(exit_code, 0)
 
@@ -149,44 +159,8 @@ class RunFinalReviewTests(unittest.TestCase):
     def test_main_returns_nonzero_when_gate_fails(self) -> None:
         review_payload = {"status": "approved", "summary": "ok", "findings": []}
 
-        def fake_run_engine(
-            *, config: object, repo_root: Path, prompt_text: str, raw_output_path: Path
-        ) -> str:
-            del config, repo_root, prompt_text
-            raw_output_path.write_text(json.dumps(review_payload), encoding="utf-8")
-            return json.dumps(review_payload)
-
-        gate_exit_codes = [2, 0, 0, 0]
-
-        def fake_run_gate(
-            *,
-            repo_root: Path,
-            gate_script: Path,
-            input_path: Path,
-            output_path: Path,
-            policy_path: Path | None = None,
-        ) -> int:
-            del repo_root, gate_script, input_path, policy_path
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text("{}\n", encoding="utf-8")
-            return gate_exit_codes.pop(0)
-
-        def fake_run_drift_and_adr_gates(
-            **kwargs: object,
-        ) -> tuple[int, int, Path, Path, Path, Path]:
-            config = _extract_gate_config(kwargs)
-            intermediate_dir = config.intermediate_dir
-            output_dir = config.output_dir
-            drift_input = intermediate_dir / "drift-detection.input.json"
-            drift_result = output_dir / "drift-detection.result.json"
-            adr_input = intermediate_dir / "adr-index.input.json"
-            adr_result = output_dir / "adr-index.result.json"
-            for path in (drift_input, drift_result, adr_input, adr_result):
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("{}\n", encoding="utf-8")
-            return 0, 0, drift_input, drift_result, adr_input, adr_result
-
         with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
             argv = [
                 "run_final_review.py",
                 "--engine",
@@ -200,29 +174,13 @@ class RunFinalReviewTests(unittest.TestCase):
                 "--prompt-template",
                 str(PROMPT_TEMPLATE),
             ]
-            with (
-                patch.object(
-                    self.runner.shared, "_parse_args", side_effect=self.runner.shared._parse_args
-                ),
-                patch.object(
-                    self.runner.shared, "_git_short_sha", side_effect=["abc1234", "def5678"]
-                ),
-                patch.object(self.runner.shared, "_run_engine", side_effect=fake_run_engine),
-                patch.object(self.runner.shared, "_validate_schema", return_value=None),
-                patch.object(self.runner.shared, "_run_gate", side_effect=fake_run_gate),
-                patch.object(
-                    self.runner,
-                    "run_drift_and_adr_gates",
-                    side_effect=fake_run_drift_and_adr_gates,
-                ),
-                patch.object(sys, "argv", argv),
-            ):
-                old_cwd = Path.cwd()
-                os.chdir(tmp)
-                try:
-                    exit_code = self.runner.main()
-                finally:
-                    os.chdir(old_cwd)
+            exit_code = _run_runner_main(
+                runner=self.runner,
+                argv=argv,
+                cwd=tmp_path,
+                review_payload=review_payload,
+                gate_exit_codes=[2, 0, 0, 0],
+            )
 
             self.assertEqual(exit_code, 2)
 

@@ -12,7 +12,7 @@ Distributable script layer for consumer repositories.
 
 ## Rules
 
-- Keep validators deterministic and side-effect free.
+- Keep validators deterministic and side-effect-free.
 - One validator per artifact contract.
 - Do not put policy prose in validator scripts.
 - Add matching tests under `tests/framework/` for every behavior change.

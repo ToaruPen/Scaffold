@@ -31,7 +31,7 @@ Scaffold repository rules.
 ## Change Discipline
 
 - Changes under `framework/` must update contract docs or manifest when behavior changes.
-- Keep validator scripts deterministic and side-effect free.
+- Keep validator scripts deterministic and side-effect-free.
 - Avoid monolithic scripts; split at around 200 lines into `lib/` modules.
 
 ## Development Cycle Rules

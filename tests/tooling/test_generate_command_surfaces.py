@@ -32,6 +32,17 @@ class GenerateCommandSurfacesTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.script = _load_script_module()
 
+    def _run_script(self, argv: list[str]) -> tuple[int, str, str]:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with (
+            patch.object(sys, "argv", argv),
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            exit_code = self.script.main()
+        return exit_code, stdout.getvalue(), stderr.getvalue()
+
     def test_generates_core_only_by_default(self) -> None:
         manifest_text = """\
 must_command_contracts:
@@ -59,12 +70,7 @@ command_tiers:
                 "all",
             ]
 
-            with patch.object(sys, "argv", argv):
-                stdout = io.StringIO()
-                stderr = io.StringIO()
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    exit_code = self.script.main()
-
+            exit_code, _, _ = self._run_script(argv)
             self.assertEqual(exit_code, 0)
             for agent in ("codex", "claude", "opencode"):
                 payload = json.loads(
@@ -101,12 +107,7 @@ command_tiers:
                 "--enable-conditional",
             ]
 
-            with patch.object(sys, "argv", argv):
-                stdout = io.StringIO()
-                stderr = io.StringIO()
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    exit_code = self.script.main()
-
+            exit_code, _, _ = self._run_script(argv)
             self.assertEqual(exit_code, 0)
             payload = json.loads((output_root / "codex.commands.json").read_text(encoding="utf-8"))
             self.assertEqual(payload["commands"], ["/research", "/waiver"])
@@ -136,14 +137,9 @@ command_tiers:
                 "claude",
             ]
 
-            with patch.object(sys, "argv", argv):
-                stdout = io.StringIO()
-                stderr = io.StringIO()
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    exit_code = self.script.main()
-
+            exit_code, _, stderr = self._run_script(argv)
             self.assertEqual(exit_code, 2)
-            self.assertIn("must_command_contracts missing tier classification", stderr.getvalue())
+            self.assertIn("must_command_contracts missing tier classification", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())
 
     def test_fails_on_malformed_manifest_yaml(self) -> None:
@@ -171,14 +167,9 @@ command_tiers:
                 "claude",
             ]
 
-            with patch.object(sys, "argv", argv):
-                stdout = io.StringIO()
-                stderr = io.StringIO()
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    exit_code = self.script.main()
-
+            exit_code, _, stderr = self._run_script(argv)
             self.assertEqual(exit_code, 2)
-            self.assertIn("failed to parse manifest YAML", stderr.getvalue())
+            self.assertIn("failed to parse manifest YAML", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())
 
     def test_fails_when_command_tier_key_is_non_string(self) -> None:
@@ -206,14 +197,9 @@ command_tiers:
                 "claude",
             ]
 
-            with patch.object(sys, "argv", argv):
-                stdout = io.StringIO()
-                stderr = io.StringIO()
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    exit_code = self.script.main()
-
+            exit_code, _, stderr = self._run_script(argv)
             self.assertEqual(exit_code, 2)
-            self.assertIn("command_tiers contains invalid entries", stderr.getvalue())
+            self.assertIn("command_tiers contains invalid entries", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())
 
     def test_fails_when_must_command_key_is_non_string(self) -> None:
@@ -242,16 +228,9 @@ command_tiers:
                 "claude",
             ]
 
-            with patch.object(sys, "argv", argv):
-                stdout = io.StringIO()
-                stderr = io.StringIO()
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    exit_code = self.script.main()
-
+            exit_code, _, stderr = self._run_script(argv)
             self.assertEqual(exit_code, 2)
-            self.assertIn(
-                "must_command_contracts missing tier classification: 123", stderr.getvalue()
-            )
+            self.assertIn("must_command_contracts contains invalid entries: 123", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())
 
     def test_fails_with_exit_two_when_output_directory_creation_fails(self) -> None:
@@ -278,17 +257,10 @@ command_tiers:
                 "claude",
             ]
 
-            with (
-                patch.object(self.script.Path, "mkdir", side_effect=OSError("permission denied")),
-                patch.object(sys, "argv", argv),
-            ):
-                stdout = io.StringIO()
-                stderr = io.StringIO()
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    exit_code = self.script.main()
-
+            with patch.object(self.script.Path, "mkdir", side_effect=OSError("permission denied")):
+                exit_code, _, stderr = self._run_script(argv)
             self.assertEqual(exit_code, 2)
-            self.assertIn("permission denied", stderr.getvalue())
+            self.assertIn("permission denied", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())
 
     def test_uses_profile_specific_default_output_directories(self) -> None:
@@ -326,17 +298,8 @@ command_tiers:
             old_cwd = Path.cwd()
             self.addCleanup(os.chdir, old_cwd)
             os.chdir(tmp_path)
-            with patch.object(sys, "argv", default_argv):
-                stdout = io.StringIO()
-                stderr = io.StringIO()
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    default_exit_code = self.script.main()
-
-            with patch.object(sys, "argv", conditional_argv):
-                stdout = io.StringIO()
-                stderr = io.StringIO()
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    conditional_exit_code = self.script.main()
+            default_exit_code, _, _ = self._run_script(default_argv)
+            conditional_exit_code, _, _ = self._run_script(conditional_argv)
 
             self.assertEqual(default_exit_code, 0)
             self.assertEqual(conditional_exit_code, 0)

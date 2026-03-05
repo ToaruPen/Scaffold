@@ -45,7 +45,7 @@ max-complexity = 10
 
 [tool.mypy]
 python_version = "3.11"
-files = ["framework/scripts/gates", "framework/scripts/lib", "tests/framework"]
+files = ["framework/scripts/gates", "framework/scripts/lib", "framework/scripts/ci", "tests/framework"]
 strict = true
 namespace_packages = true
 explicit_package_bases = true

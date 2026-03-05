@@ -29,6 +29,18 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _require_repo_child(repo_root: Path, path: Path, label: str) -> Path:
+    resolved_root = repo_root.resolve()
+    resolved_path = path.resolve()
+    try:
+        resolved_path.relative_to(resolved_root)
+    except ValueError as exc:
+        raise ValueError(
+            f"{label} is outside repository root: {resolved_path} (root: {resolved_root})"
+        ) from exc
+    return resolved_path
+
+
 def main() -> int:
     args = _parse_args()
     repo_root = Path(_REPO_ROOT).resolve()
@@ -46,6 +58,8 @@ def main() -> int:
         if decisions_path_arg.is_absolute()
         else (repo_root / decisions_path_arg).resolve()
     )
+    index_path = _require_repo_child(repo_root, index_path, "ADR index path")
+    decisions_path = _require_repo_child(repo_root, decisions_path, "decisions path")
 
     try:
         records = collect_adr_records(repo_root, adr_dir)

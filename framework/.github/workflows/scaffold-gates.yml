@@ -24,7 +24,7 @@ jobs:
         run: check-jsonschema --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json
 
       - name: Run gate tests
-        run: python3 -m unittest discover -s tests/framework -p "test_validate_*.py"
+        run: python3 -m unittest discover -s tests/framework -p "test_*.py"
 
       # Customize/remove this if your repository does not provide root Makefile targets
       - name: Check verify target

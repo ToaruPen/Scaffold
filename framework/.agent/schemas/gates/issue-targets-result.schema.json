@@ -36,5 +36,24 @@
       "type": "array",
       "items": {"$ref": "../common/adapter-error.schema.json"}
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {"const": "fail"}
+        }
+      },
+      "then": {
+        "required": ["mismatch_reasons"],
+        "properties": {
+          "mismatch_reasons": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    }
+  ]
 }

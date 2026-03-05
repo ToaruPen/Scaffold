@@ -27,10 +27,17 @@
 
 ## Acceptance Criteria
 ### Happy Path
-- [ ]
+- Metric:
+- Threshold:
+- Measurement:
 
 ### Failure Path
-- [ ]
+- Metric:
+- Threshold:
+- Measurement:
+
+### Out of Scope
+- Explicitly excluded:
 
 ## Risks and Unknowns
 - Risk:

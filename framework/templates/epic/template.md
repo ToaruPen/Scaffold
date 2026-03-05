@@ -15,6 +15,9 @@
 ### Excluded
 -
 
+## Out of Scope
+- Explicitly excluded:
+
 ## Issues
 
 | ID | Title | Goal | Owner | Status |
@@ -34,4 +37,10 @@
 - [ ]
 
 ## Acceptance Criteria
-- [ ]
+### Success Metrics
+- Metric:
+- Target:
+
+### Validation
+- Method:
+- Evidence:

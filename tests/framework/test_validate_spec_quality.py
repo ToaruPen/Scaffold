@@ -8,7 +8,8 @@ import unittest
 from collections.abc import Mapping
 from pathlib import Path
 
-SCRIPT = Path("framework/scripts/gates/validate_spec_quality.py")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = REPO_ROOT / "framework/scripts/gates/validate_spec_quality.py"
 
 
 class ValidateSpecQualityTests(unittest.TestCase):

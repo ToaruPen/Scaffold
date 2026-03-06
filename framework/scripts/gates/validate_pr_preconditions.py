@@ -104,6 +104,13 @@ def _validate_gate_stage(
     }
 
 
+def _missing_gate_stage_result() -> dict[str, str]:
+    return {
+        "status": "fail",
+        "artifact_path": "unknown",
+    }
+
+
 def _scope_lock_mismatch_reasons(
     *,
     scope_lock_matched: bool,
@@ -169,6 +176,7 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         stage_obj = review_evidence.get(stage_key)
         if not isinstance(stage_obj, dict):
             mismatch_reasons.append(f"{stage_key}_missing")
+            stage_results[stage_key] = _missing_gate_stage_result()
             continue
         stage_results[stage_key] = _validate_gate_stage(
             stage_key=stage_key,

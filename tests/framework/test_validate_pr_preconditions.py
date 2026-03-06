@@ -197,6 +197,7 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
         self.assertIn("drift_detection_not_passed", body["mismatch_reasons"])
         self.assertIn("adr_index_missing", body["mismatch_reasons"])
         self.assertEqual(body["review_evidence"]["drift_detection"]["status"], "fail")
+        self.assertEqual(body["review_evidence"]["adr_index"]["status"], "fail")
 
     def test_returns_invalid_input_when_expected_missing(self) -> None:
         payload = {

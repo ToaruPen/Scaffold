@@ -80,6 +80,47 @@ def _write_decisions_index(path: Path, rows: list[dict[str, str]]) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _make_adr_entry(
+    *,
+    adr_id: str,
+    title: str,
+    status: str,
+    file_path: str,
+    overrides: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    entry: dict[str, object] = {
+        "adr_id": adr_id,
+        "title": title,
+        "status": status,
+        "date": "2026-03-05",
+        "file_path": file_path,
+        "decision_summary": "Use a deterministic validator output.",
+        "issue_url": "https://example.com/issues/1",
+    }
+    if overrides is not None:
+        entry.update(overrides)
+    return entry
+
+
+def _build_payload(
+    *,
+    entries: list[dict[str, object]],
+    request_id: str = "req-adr",
+    scope_id: str = "issue-14",
+    run_id: str = "run-1",
+    artifact_path: str = "docs/adr/index.json",
+) -> dict[str, object]:
+    return {
+        "request_id": request_id,
+        "scope_id": scope_id,
+        "run_id": run_id,
+        "artifact_path": artifact_path,
+        "adr_index": {
+            "entries": entries,
+        },
+    }
+
+
 class ValidateAdrIndexTests(unittest.TestCase):
     def _run(
         self,
@@ -152,34 +193,23 @@ class ValidateAdrIndexTests(unittest.TestCase):
                     },
                 ],
             )
-            payload = {
-                "request_id": "req-adr-1",
-                "scope_id": "issue-14",
-                "run_id": "run-1",
-                "artifact_path": "docs/adr/index.json",
-                "adr_index": {
-                    "entries": [
-                        {
-                            "adr_id": "ADR-001",
-                            "title": "First",
-                            "status": "accepted",
-                            "date": "2026-03-05",
-                            "file_path": "docs/adr/ADR-001.md",
-                            "decision_summary": "Use a deterministic validator output.",
-                            "issue_url": "https://example.com/issues/1",
-                        },
-                        {
-                            "adr_id": "ADR-002",
-                            "title": "Second",
-                            "status": "proposed",
-                            "date": "2026-03-05",
-                            "file_path": "docs/adr/ADR-002.md",
-                            "decision_summary": "Use a deterministic validator output.",
-                            "issue_url": "https://example.com/issues/1",
-                        },
-                    ]
-                },
-            }
+            payload = _build_payload(
+                request_id="req-adr-1",
+                entries=[
+                    _make_adr_entry(
+                        adr_id="ADR-001",
+                        title="First",
+                        status="accepted",
+                        file_path="docs/adr/ADR-001.md",
+                    ),
+                    _make_adr_entry(
+                        adr_id="ADR-002",
+                        title="Second",
+                        status="proposed",
+                        file_path="docs/adr/ADR-002.md",
+                    ),
+                ],
+            )
             result = self._run(payload, cwd=repo_root, repo_root=repo_root)
             self.assertEqual(result.returncode, 0)
             body = json.loads(result.stdout)
@@ -207,25 +237,18 @@ class ValidateAdrIndexTests(unittest.TestCase):
                 ],
             )
 
-            payload = {
-                "request_id": "req-adr-11",
-                "scope_id": "issue-14",
-                "run_id": "run-11",
-                "artifact_path": "docs/adr/index.json",
-                "adr_index": {
-                    "entries": [
-                        {
-                            "adr_id": "ADR-040",
-                            "title": "Lowercase ID",
-                            "status": "accepted",
-                            "date": "2026-03-05",
-                            "file_path": "docs/adr/ADR-040.md",
-                            "decision_summary": "Use a deterministic validator output.",
-                            "issue_url": "https://example.com/issues/1",
-                        }
-                    ]
-                },
-            }
+            payload = _build_payload(
+                request_id="req-adr-11",
+                run_id="run-11",
+                entries=[
+                    _make_adr_entry(
+                        adr_id="ADR-040",
+                        title="Lowercase ID",
+                        status="accepted",
+                        file_path="docs/adr/ADR-040.md",
+                    )
+                ],
+            )
             result = self._run(payload, cwd=repo_root, repo_root=repo_root)
             self.assertEqual(result.returncode, 0)
             body = json.loads(result.stdout)
@@ -276,25 +299,19 @@ class ValidateAdrIndexTests(unittest.TestCase):
                 ],
             )
 
-            payload = {
-                "request_id": "req-adr-13",
-                "scope_id": "issue-14",
-                "run_id": "run-13",
-                "artifact_path": "docs/adr/index.json",
-                "adr_index": {
-                    "entries": [
-                        {
-                            "adr_id": "ADR-042",
-                            "title": "Decision Summary Section",
-                            "status": "accepted",
-                            "date": "2026-03-05",
-                            "file_path": "docs/adr/ADR-042.md",
-                            "decision_summary": "Use Decision Summary heading.",
-                            "issue_url": "https://example.com/issues/1",
-                        }
-                    ]
-                },
-            }
+            payload = _build_payload(
+                request_id="req-adr-13",
+                run_id="run-13",
+                entries=[
+                    _make_adr_entry(
+                        adr_id="ADR-042",
+                        title="Decision Summary Section",
+                        status="accepted",
+                        file_path="docs/adr/ADR-042.md",
+                        overrides={"decision_summary": "Use Decision Summary heading."},
+                    )
+                ],
+            )
             result = self._run(payload, cwd=repo_root)
             self.assertEqual(result.returncode, 0)
             body = json.loads(result.stdout)
@@ -346,6 +363,7 @@ class ValidateAdrIndexTests(unittest.TestCase):
             result = self._run(payload, cwd=repo_root)
             self.assertEqual(result.returncode, 2)
             body = json.loads(result.stdout)
+            self.assertEqual(body["status"], "fail")
             self.assertIn("duplicate_adr_id", body["mismatch_reasons"])
 
     def test_fails_when_decisions_index_mismatches_index(self) -> None:

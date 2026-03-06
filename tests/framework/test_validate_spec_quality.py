@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -10,7 +11,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "framework/scripts/gates/validate_spec_quality.py"
-CHECK_JSONSCHEMA = REPO_ROOT / ".venv/bin/check-jsonschema"
+CHECK_JSONSCHEMA = shutil.which("check-jsonschema") or str(REPO_ROOT / ".venv/bin/check-jsonschema")
 SCHEMA = REPO_ROOT / "framework/.agent/schemas/gates/spec-quality-result.schema.json"
 
 
@@ -111,6 +112,8 @@ class ValidateSpecQualityTests(unittest.TestCase):
         self.assertEqual(body["acceptance_criteria_count"], 1)
 
     def test_schema_rejects_pass_with_non_empty_mismatch_reasons(self) -> None:
+        if shutil.which("check-jsonschema") is None and not Path(CHECK_JSONSCHEMA).exists():
+            self.skipTest("check-jsonschema is not available")
         payload = {
             "request_id": "req-s-schema",
             "scope_id": "issue-2",

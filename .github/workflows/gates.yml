@@ -20,14 +20,5 @@ jobs:
       - name: Install dependencies
         run: make install-dev
 
-      - name: Validate schema files
-        run: .venv/bin/check-jsonschema --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json
-
-      - name: Run gate validators tests
-        run: .venv/bin/python -m unittest discover -s tests/framework -p "test_validate_*.py"
-
-      - name: Run review runner tests
-        run: .venv/bin/python -m unittest discover -s tests/framework -p "test_run_*review*.py"
-
       - name: Run full verify
         run: make verify

@@ -7,18 +7,19 @@ MYPY ?= $(VENV_BIN)/mypy
 CHECK_JSONSCHEMA ?= $(VENV_BIN)/check-jsonschema
 PRE_COMMIT ?= $(VENV_BIN)/pre-commit
 SHELLCHECK ?= $(VENV_BIN)/shellcheck
+SHELL_FILES = $(shell find framework -type f -name '*.sh' | sort)
 
 export PATH := $(abspath $(VENV_BIN)):$(PATH)
 
 install-dev:
-	python3 -m venv .venv
+	@if [ ! -d .venv ]; then python3 -m venv .venv; fi
 	$(PYTHON) -m pip install -r requirements-dev.txt
 
 lint:
 	$(RUFF) check framework tests
 
 lint-shell:
-	$(SHELLCHECK) framework/scripts/hooks/run-lint.sh
+	$(SHELLCHECK) $(SHELL_FILES)
 
 format:
 	$(RUFF) format framework tests

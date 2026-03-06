@@ -57,6 +57,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="allow replacing existing non-generated files",
     )
+    parser.add_argument(
+        "--write-active-surfaces",
+        action="store_true",
+        help="write the selected surface into the live root agent directories",
+    )
     return parser.parse_args()
 
 
@@ -102,8 +107,16 @@ def _guard_overwrite(path: Path, *, force: bool) -> None:
         )
 
 
-def _root_output_base(*, agent: str, repo_root: Path, include_conditional: bool) -> Path:
-    del agent, include_conditional
+def _root_output_base(
+    *,
+    agent: str,
+    repo_root: Path,
+    include_conditional: bool,
+    write_active_surfaces: bool,
+) -> Path:
+    del agent
+    if include_conditional and not write_active_surfaces:
+        return repo_root / "tooling/sync/generated/with-conditional/markdown"
     return repo_root
 
 
@@ -341,6 +354,10 @@ def main() -> int:
     output_root = Path(args.output_root) if args.output_root else None
 
     try:
+        if output_root is not None and args.write_active_surfaces:
+            raise CommandSurfaceLoadError(
+                "--write-active-surfaces cannot be combined with --output-root"
+            )
         catalog = load_command_catalog(repo_root, args.manifest)
         commands = _filter_commands_for_surface(
             catalog["commands"], include_conditional=args.enable_conditional
@@ -374,6 +391,7 @@ def main() -> int:
                 agent=agent,
                 repo_root=repo_root,
                 include_conditional=args.enable_conditional,
+                write_active_surfaces=args.write_active_surfaces,
             )
             _, rendered_outputs, stale_paths = _write_agent_outputs(
                 agent=agent,

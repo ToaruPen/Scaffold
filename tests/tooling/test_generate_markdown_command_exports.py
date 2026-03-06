@@ -302,6 +302,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
                     "--agent",
                     "all",
                     "--enable-conditional",
+                    "--write-active-surfaces",
                 ]
             )
 
@@ -581,16 +582,24 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
         conditional_commands = catalog["commands"]
 
         with tempfile.TemporaryDirectory() as tmp:
-            output_root = Path(tmp) / "markdown-preview"
+            active_repo_root = Path(tmp) / "active-root"
             conditional_output_root = Path(tmp) / "markdown-preview-conditional"
+            active_repo_root.mkdir()
+            active_manifest = active_repo_root / "framework/scripts/manifest.yaml"
+            active_manifest.parent.mkdir(parents=True, exist_ok=True)
+            active_manifest.write_text(
+                (REPO_ROOT / "framework/scripts/manifest.yaml").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
             exit_code, _, _ = self._run_script(
                 [
                     "generate_markdown_command_exports.py",
-                    "--output-root",
-                    str(output_root),
+                    "--repo-root",
+                    str(active_repo_root),
                     "--agent",
                     "all",
                     "--enable-conditional",
+                    "--write-active-surfaces",
                 ]
             )
             conditional_exit_code, _, _ = self._run_script(
@@ -608,7 +617,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             self.assertEqual(conditional_exit_code, 0)
             for command in active_commands:
                 opencode_expected = (
-                    output_root / "opencode/.opencode/commands" / f"{command['slug']}.md"
+                    active_repo_root / ".opencode/commands" / f"{command['slug']}.md"
                 ).read_text(encoding="utf-8")
                 opencode_actual = (
                     REPO_ROOT / ".opencode/commands" / f"{command['slug']}.md"
@@ -616,7 +625,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
                 self.assertEqual(opencode_actual, opencode_expected)
 
                 claude_expected = (
-                    output_root / "claude/.claude/skills" / command["slug"] / "SKILL.md"
+                    active_repo_root / ".claude/skills" / command["slug"] / "SKILL.md"
                 ).read_text(encoding="utf-8")
                 claude_actual = (
                     REPO_ROOT / ".claude/skills" / command["slug"] / "SKILL.md"
@@ -708,6 +717,38 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 2)
             self.assertIn("must not point at the filesystem root", stderr)
+
+    def test_refuses_combining_output_root_with_active_surface_install(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            exit_code, _, stderr = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--output-root",
+                    str(repo_root / "preview"),
+                    "--write-active-surfaces",
+                ]
+            )
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("cannot be combined with --output-root", stderr)
 
 
 if __name__ == "__main__":

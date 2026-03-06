@@ -91,13 +91,16 @@ Default behavior:
 - write Claude skills to `.claude/skills/*/SKILL.md`
 - this repository opts into the conditional markdown surface, so the standard
   `make command-exports-markdown` target writes both `core` and `conditional`
-  commands to the active agent surfaces
+  commands to the active agent surfaces via `--write-active-surfaces`
 
 Conditional behavior:
 
 - write preview/reference exports to `tooling/sync/generated/with-conditional/markdown/`
 - preserve `Next Commands` only when the referenced command exists on the same
   generated surface
+- `--enable-conditional` alone writes the conditional preview surface
+- `--enable-conditional --write-active-surfaces` installs that surface into the
+  live root agent directories for repositories that explicitly opt in
 
 Generated files are deterministic and refuse to overwrite manual files unless
 `--force-overwrite-existing` is passed.

@@ -87,7 +87,7 @@ def _run_runner_main(
 
     with (
         patch.object(runner.shared, "_parse_args", side_effect=runner.shared._parse_args),
-        patch.object(runner.shared, "_git_short_sha", side_effect=["abc1234", "def5678"]),
+        patch.object(runner.shared, "_resolve_review_range", return_value=("abc1234", "def5678")),
         patch.object(runner, "_run_engine", side_effect=fake_run_engine),
         patch.object(runner, "_validate_schema", return_value=None),
         patch.object(runner, "_run_gate", side_effect=fake_run_gate),
@@ -183,6 +183,48 @@ class RunFinalReviewTests(unittest.TestCase):
             )
 
             self.assertEqual(exit_code, 2)
+
+    def test_main_fail_fast_when_worktree_is_dirty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            argv = [
+                "run_final_review.py",
+                "--engine",
+                "codex",
+                "--scope-id",
+                "issue-12",
+                "--run-id",
+                "run-final-review-dirty",
+                "--base-ref",
+                "main",
+                "--prompt-template",
+                str(PROMPT_TEMPLATE),
+            ]
+
+            with (
+                patch.object(
+                    self.runner.shared, "_parse_args", side_effect=self.runner.shared._parse_args
+                ),
+                patch.object(
+                    self.runner.shared,
+                    "_resolve_review_range",
+                    side_effect=ValueError(
+                        "review-cycle requires a clean working tree; "
+                        "commit or stash changes before running review"
+                    ),
+                ),
+                patch.object(self.runner, "_run_engine") as run_engine_mock,
+                patch.object(sys, "argv", argv),
+            ):
+                old_cwd = Path.cwd()
+                os.chdir(tmp_path)
+                try:
+                    exit_code = self.runner.main()
+                finally:
+                    os.chdir(old_cwd)
+
+            self.assertEqual(exit_code, 2)
+            run_engine_mock.assert_not_called()
 
 
 if __name__ == "__main__":

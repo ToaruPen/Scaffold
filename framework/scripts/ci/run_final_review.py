@@ -30,16 +30,10 @@ def main() -> int:
     config = shared._parse_args()
     repo_root = Path.cwd()
 
-    head_sha = shared._git_short_sha(repo_root, "HEAD")
-    if head_sha is None:
-        print(
-            "failed to resolve HEAD sha; create an initial commit before running review",
-            file=sys.stderr,
-        )
-        return 2
-    base_sha = shared._git_short_sha(repo_root, config.base_ref)
-    if base_sha is None:
-        print(f"failed to resolve base ref sha: {config.base_ref}", file=sys.stderr)
+    try:
+        head_sha, base_sha = shared._resolve_review_range(repo_root, config.base_ref)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
         return 2
 
     request_id = f"req-{config.engine}-{_STAGE}-{config.run_id}"

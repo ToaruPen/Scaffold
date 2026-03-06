@@ -165,27 +165,30 @@ def _run_engine(
             return raw_output_path.read_text(encoding="utf-8")
         return result.stdout
 
-    schema_text = json.dumps(
-        json.loads(config.canonical_schema.read_text(encoding="utf-8")), separators=(",", ":")
-    )
-    command = [
-        "claude",
-        "-p",
-        "--permission-mode",
-        "bypassPermissions",
-        "--output-format",
-        "json",
-        "--json-schema",
-        schema_text,
-        prompt_text,
-    ]
-    if config.claude_model:
-        command[1:1] = ["--model", config.claude_model]
-    if config.claude_effort:
-        command[1:1] = ["--effort", config.claude_effort]
-    result = _ci_run_command(command, cwd=repo_root, timeout_sec=config.timeout_sec)
-    if result.returncode != 0:
-        message = result.stderr.strip() or result.stdout.strip()
-        raise ValueError(f"claude execution failed: {message}")
-    raw_output_path.write_text(result.stdout, encoding="utf-8")
-    return result.stdout
+    if config.engine == "claude":
+        schema_text = json.dumps(
+            json.loads(config.canonical_schema.read_text(encoding="utf-8")), separators=(",", ":")
+        )
+        command = [
+            "claude",
+            "-p",
+            "--permission-mode",
+            "bypassPermissions",
+            "--output-format",
+            "json",
+            "--json-schema",
+            schema_text,
+            prompt_text,
+        ]
+        if config.claude_model:
+            command[1:1] = ["--model", config.claude_model]
+        if config.claude_effort:
+            command[1:1] = ["--effort", config.claude_effort]
+        result = _ci_run_command(command, cwd=repo_root, timeout_sec=config.timeout_sec)
+        if result.returncode != 0:
+            message = result.stderr.strip() or result.stdout.strip()
+            raise ValueError(f"claude execution failed: {message}")
+        raw_output_path.write_text(result.stdout, encoding="utf-8")
+        return result.stdout
+
+    raise ValueError(f"unsupported engine: {config.engine}")

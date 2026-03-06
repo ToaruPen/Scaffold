@@ -9,6 +9,7 @@ import sys
 import traceback
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 try:
     from framework.scripts.lib.ci_helpers import (
@@ -25,6 +26,7 @@ try:
     from framework.scripts.lib.paths_metadata import (
         ReviewContext,
         RunnerConfig,
+        RunPaths,
         RunResultState,
         _build_metadata,
         _build_run_paths,
@@ -49,6 +51,7 @@ except ModuleNotFoundError:
     from framework.scripts.lib.paths_metadata import (
         ReviewContext,
         RunnerConfig,
+        RunPaths,
         RunResultState,
         _build_metadata,
         _build_run_paths,
@@ -217,61 +220,11 @@ def main() -> int:
     )
 
     try:
-        instructions, focus_paths = _load_prompt_template(repo_root / config.prompt_template)
-        prompt_text = _render_prompt(
-            instructions=instructions,
-            focus_paths=focus_paths,
-            context=context,
-        )
-        paths.prompt_path.write_text(prompt_text, encoding="utf-8")
-
-        raw_text = _run_engine(
+        normalized, cycle_exit, evidence_exit = _execute_review_pipeline(
+            repo_root=repo_root,
             config=config,
-            repo_root=repo_root,
-            prompt_text=prompt_text,
-            raw_output_path=paths.raw_output_path,
-        )
-
-        extracted = _extract_review_json(raw_text)
-        normalized = _normalize_review(
-            payload=extracted,
             context=context,
-        )
-        _write_json(paths.review_json_path, normalized)
-
-        _validate_schema(repo_root, repo_root / config.canonical_schema, paths.review_json_path)
-
-        review_cycle_artifact = context.artifact_path
-        _write_json(
-            paths.review_cycle_input,
-            _build_gate_input(
-                artifact_path=review_cycle_artifact,
-                review_payload=normalized,
-                context=context,
-            ),
-        )
-        cycle_exit = _run_gate(
-            repo_root=repo_root,
-            gate_script=repo_root / "framework/scripts/gates/validate_review_cycle.py",
-            input_path=paths.review_cycle_input,
-            output_path=paths.review_cycle_result,
-        )
-
-        review_evidence_artifact = _relative_path(repo_root, paths.review_evidence_result)
-        _write_json(
-            paths.review_evidence_input,
-            _build_gate_input(
-                artifact_path=review_evidence_artifact,
-                review_payload=normalized,
-                context=context,
-            ),
-        )
-        evidence_exit = _run_gate(
-            repo_root=repo_root,
-            gate_script=repo_root / "framework/scripts/gates/validate_review_evidence.py",
-            input_path=paths.review_evidence_input,
-            output_path=paths.review_evidence_result,
-            policy_path=repo_root / config.policy_path,
+            paths=paths,
         )
 
         metadata = _build_metadata(
@@ -281,8 +234,7 @@ def main() -> int:
             paths=paths,
             result_state=RunResultState(cycle_exit=cycle_exit, evidence_exit=evidence_exit),
         )
-        _write_json(paths.output_dir / "index.json", metadata)
-        _write_json(paths.output_dir / "run-metadata.json", metadata)
+        _persist_metadata(paths=paths, metadata=metadata)
 
         print(json.dumps(metadata, ensure_ascii=True, indent=2, sort_keys=True))
         exit_code = 0 if cycle_exit == 0 and evidence_exit == 0 else 2
@@ -302,10 +254,75 @@ def main() -> int:
                 trace=traceback.format_exc(),
             ),
         )
-        _write_json(paths.output_dir / "index.json", failure_metadata)
-        _write_json(paths.output_dir / "run-metadata.json", failure_metadata)
+        _persist_metadata(paths=paths, metadata=failure_metadata)
         print(json.dumps(failure_metadata, ensure_ascii=True, indent=2, sort_keys=True))
         return 2
+
+
+def _execute_review_pipeline(
+    *,
+    repo_root: Path,
+    config: RunnerConfig,
+    context: ReviewContext,
+    paths: RunPaths,
+) -> tuple[dict[str, Any], int, int]:
+    instructions, focus_paths = _load_prompt_template(repo_root / config.prompt_template)
+    prompt_text = _render_prompt(
+        instructions=instructions,
+        focus_paths=focus_paths,
+        context=context,
+    )
+    paths.prompt_path.write_text(prompt_text, encoding="utf-8")
+
+    raw_text = _run_engine(
+        config=config,
+        repo_root=repo_root,
+        prompt_text=prompt_text,
+        raw_output_path=paths.raw_output_path,
+    )
+
+    extracted = _extract_review_json(raw_text)
+    normalized = _normalize_review(payload=extracted, context=context)
+    _write_json(paths.review_json_path, normalized)
+    _validate_schema(repo_root, repo_root / config.canonical_schema, paths.review_json_path)
+
+    _write_json(
+        paths.review_cycle_input,
+        _build_gate_input(
+            artifact_path=context.artifact_path,
+            review_payload=normalized,
+            context=context,
+        ),
+    )
+    cycle_exit = _run_gate(
+        repo_root=repo_root,
+        gate_script=repo_root / "framework/scripts/gates/validate_review_cycle.py",
+        input_path=paths.review_cycle_input,
+        output_path=paths.review_cycle_result,
+    )
+
+    review_evidence_artifact = _relative_path(repo_root, paths.review_evidence_result)
+    _write_json(
+        paths.review_evidence_input,
+        _build_gate_input(
+            artifact_path=review_evidence_artifact,
+            review_payload=normalized,
+            context=context,
+        ),
+    )
+    evidence_exit = _run_gate(
+        repo_root=repo_root,
+        gate_script=repo_root / "framework/scripts/gates/validate_review_evidence.py",
+        input_path=paths.review_evidence_input,
+        output_path=paths.review_evidence_result,
+        policy_path=repo_root / config.policy_path,
+    )
+    return normalized, cycle_exit, evidence_exit
+
+
+def _persist_metadata(*, paths: RunPaths, metadata: dict[str, Any]) -> None:
+    _write_json(paths.output_dir / "index.json", metadata)
+    _write_json(paths.output_dir / "run-metadata.json", metadata)
 
 
 if __name__ == "__main__":

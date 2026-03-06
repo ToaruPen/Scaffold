@@ -478,6 +478,37 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             self.assertEqual(exit_code, 2)
             self.assertIn("must not point at the repository root", stderr)
 
+    def test_refuses_filesystem_root_output_root(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            exit_code, _, stderr = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--output-root",
+                    "/",
+                ]
+            )
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("must not point at the filesystem root", stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

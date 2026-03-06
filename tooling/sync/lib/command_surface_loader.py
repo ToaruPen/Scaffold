@@ -99,6 +99,13 @@ def load_command_catalog(repo_root: Path, manifest_path: str | Path) -> dict[str
             f"must_command_contracts missing tier classification: {details}"
         )
 
+    invalid_metadata_commands = sorted(
+        str(command) for command in command_metadata if not isinstance(command, str)
+    )
+    if invalid_metadata_commands:
+        details = ", ".join(invalid_metadata_commands)
+        raise CommandSurfaceLoadError(f"command_metadata contains invalid entries: {details}")
+
     metadata_ids = set(command_metadata)
     missing_metadata = sorted(
         command for command in tier_command_ids if command not in metadata_ids

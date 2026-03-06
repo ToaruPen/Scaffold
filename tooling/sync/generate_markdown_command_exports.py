@@ -211,6 +211,7 @@ def _filter_commands_for_surface(
 def _guard_output_override(repo_root: Path, output_root: Path) -> None:
     resolved_repo_root = repo_root.resolve()
     resolved_output_root = output_root.resolve()
+    filesystem_root = Path(resolved_output_root.anchor)
     if resolved_output_root == resolved_repo_root:
         raise CommandSurfaceLoadError(
             "--output-root must not point at the repository root; use a dedicated directory"
@@ -219,7 +220,7 @@ def _guard_output_override(repo_root: Path, output_root: Path) -> None:
         raise CommandSurfaceLoadError(
             "--output-root must not point at the repository parent; use a dedicated directory"
         )
-    if resolved_output_root == resolved_output_root.anchor:
+    if resolved_output_root == filesystem_root:
         raise CommandSurfaceLoadError("--output-root must not point at the filesystem root")
 
 

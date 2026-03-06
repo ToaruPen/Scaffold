@@ -123,7 +123,7 @@ def build_index_payload(records: list[AdrRecord]) -> dict[str, object]:
             "issue_url": record.issue_url,
         }
         if record.supersedes:
-            entry["supersedes"] = record.supersedes
+            entry["supersedes"] = list(record.supersedes)
         entries.append(entry)
     return {"entries": entries}
 

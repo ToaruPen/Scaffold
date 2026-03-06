@@ -18,16 +18,16 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: python -m pip install -r framework/requirements-dev.txt
+        run: make install-dev
 
       - name: Validate schema files
-        run: check-jsonschema --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json
+        run: .venv/bin/check-jsonschema --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json
 
       - name: Run gate validators tests
-        run: python3 -m unittest discover -s tests/framework -p "test_validate_*.py"
+        run: .venv/bin/python -m unittest discover -s tests/framework -p "test_validate_*.py"
 
       - name: Run review runner tests
-        run: python3 -m unittest discover -s tests/framework -p "test_run_*review*.py"
+        run: .venv/bin/python -m unittest discover -s tests/framework -p "test_run_*review*.py"
 
       - name: Run full verify
         run: make verify

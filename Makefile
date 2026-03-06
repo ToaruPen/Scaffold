@@ -39,13 +39,13 @@ test:
 verify: lint lint-shell format-check typecheck schema-check test
 
 command-surfaces:
-	python3 tooling/sync/generate_command_surfaces.py --output-root tooling/sync/generated/default --agent all
+	$(PYTHON) tooling/sync/generate_command_surfaces.py --output-root tooling/sync/generated/default --agent all
 
 command-surfaces-conditional:
-	python3 tooling/sync/generate_command_surfaces.py --output-root tooling/sync/generated/with-conditional --agent all --enable-conditional
+	$(PYTHON) tooling/sync/generate_command_surfaces.py --output-root tooling/sync/generated/with-conditional --agent all --enable-conditional
 
 agent-rules:
-	python3 tooling/sync/generate_agent_rules.py
+	$(PYTHON) tooling/sync/generate_agent_rules.py
 
 pre-commit:
 	$(PRE_COMMIT) run --all-files

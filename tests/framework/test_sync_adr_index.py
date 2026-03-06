@@ -6,6 +6,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any, cast
+
+from framework.scripts.lib.adr_index_sync import AdrRecord, build_index_payload
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "framework/scripts/ci/sync_adr_index.py"
@@ -47,6 +50,27 @@ def _run_sync(
 
 
 class SyncAdrIndexTests(unittest.TestCase):
+    def test_build_index_payload_normalizes_supersedes_to_list(self) -> None:
+        payload = build_index_payload(
+            [
+                AdrRecord(
+                    adr_id="ADR-011",
+                    title="Use tuple internally",
+                    status="accepted",
+                    date="2026-03-05",
+                    file_path="docs/adr/ADR-011.md",
+                    decision_summary="Normalize payload types.",
+                    issue_url="https://example.com/issues/11",
+                    supersedes=("ADR-001", "ADR-002"),
+                )
+            ]
+        )
+
+        entries = cast(list[dict[str, Any]], payload["entries"])
+        entry = entries[0]
+        self.assertEqual(entry["supersedes"], ["ADR-001", "ADR-002"])
+        self.assertIsInstance(entry["supersedes"], list)
+
     def test_generates_index_and_decisions_files(self) -> None:
         with tempfile.TemporaryDirectory(dir=REPO_ROOT) as repo_tmp:
             repo_root = Path(repo_tmp)

@@ -10,6 +10,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "framework/scripts/gates/validate_spec_quality.py"
+CHECK_JSONSCHEMA = REPO_ROOT / ".venv/bin/check-jsonschema"
+SCHEMA = REPO_ROOT / "framework/.agent/schemas/gates/spec-quality-result.schema.json"
 
 
 class ValidateSpecQualityTests(unittest.TestCase):
@@ -107,6 +109,36 @@ class ValidateSpecQualityTests(unittest.TestCase):
         body = json.loads(result.stdout)
         self.assertIn("acceptance_criteria_count_invalid", body["mismatch_reasons"])
         self.assertEqual(body["acceptance_criteria_count"], 1)
+
+    def test_schema_rejects_pass_with_non_empty_mismatch_reasons(self) -> None:
+        payload = {
+            "request_id": "req-s-schema",
+            "scope_id": "issue-2",
+            "run_id": "run-schema",
+            "status": "pass",
+            "artifact_path": "artifacts/spec/issue-2.json",
+            "spec_ref": "docs/prd/prd-v1.md",
+            "has_acceptance_criteria": True,
+            "has_out_of_scope": True,
+            "acceptance_criteria_count": 1,
+            "mismatch_reasons": ["unexpected_reason"],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            payload_path = Path(tmp) / "payload.json"
+            payload_path.write_text(json.dumps(payload), encoding="utf-8")
+            result = subprocess.run(
+                [
+                    str(CHECK_JSONSCHEMA),
+                    "--schemafile",
+                    str(SCHEMA),
+                    str(payload_path),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=REPO_ROOT,
+            )
+        self.assertNotEqual(result.returncode, 0)
 
     def test_fails_with_invalid_input(self) -> None:
         payload = {

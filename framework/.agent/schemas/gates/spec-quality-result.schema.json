@@ -69,6 +69,22 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {"const": "pass"}
+        }
+      },
+      "then": {
+        "required": ["mismatch_reasons"],
+        "properties": {
+          "mismatch_reasons": {
+            "type": "array",
+            "maxItems": 0
+          }
+        }
+      }
     }
   ]
 }

@@ -830,6 +830,85 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             self.assertEqual(exit_code, 2)
             self.assertIn("cannot be combined with --output-root", stderr)
 
+    def test_refuses_sync_preview_snapshot_without_active_surface_flag(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            exit_code, _, stderr = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--enable-conditional",
+                    "--sync-preview-snapshot",
+                ]
+            )
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("requires --write-active-surfaces", stderr)
+
+    def test_sync_preview_snapshot_preflights_preview_before_live_writes(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                },
+                {
+                    "id": "/waiver",
+                    "tier": "conditional",
+                    "requires": ["waiver-exception"],
+                    "next_steps": ["/research"],
+                },
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+            preview_conflict = (
+                repo_root
+                / "tooling/sync/generated/with-conditional/markdown/opencode"
+                / ".opencode/commands/obsolete.md"
+            )
+            preview_conflict.parent.mkdir(parents=True, exist_ok=True)
+            preview_conflict.write_text("manual stale\n", encoding="utf-8")
+
+            exit_code, _, stderr = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--agent",
+                    "all",
+                    "--enable-conditional",
+                    "--write-active-surfaces",
+                    "--sync-preview-snapshot",
+                ]
+            )
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("is stale but not generated", stderr)
+            self.assertFalse((repo_root / ".opencode/commands/research.md").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

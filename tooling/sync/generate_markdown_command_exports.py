@@ -62,6 +62,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="write the selected surface into the live root agent directories",
     )
+    parser.add_argument(
+        "--sync-preview-snapshot",
+        action="store_true",
+        help="update the conditional preview snapshot in the same invocation as active surfaces",
+    )
     return parser.parse_args()
 
 
@@ -388,6 +393,12 @@ def main() -> int:
             raise CommandSurfaceLoadError(
                 "--write-active-surfaces cannot be combined with --output-root"
             )
+        if args.sync_preview_snapshot and not args.write_active_surfaces:
+            raise CommandSurfaceLoadError(
+                "--sync-preview-snapshot requires --write-active-surfaces"
+            )
+        if args.sync_preview_snapshot and not args.enable_conditional:
+            raise CommandSurfaceLoadError("--sync-preview-snapshot requires --enable-conditional")
         catalog = load_command_catalog(repo_root, args.manifest)
         commands = _filter_commands_for_surface(
             catalog["commands"], include_conditional=args.enable_conditional
@@ -437,6 +448,21 @@ def main() -> int:
                 force=args.force_overwrite_existing,
             )
             planned_outputs.append((agent_root, rendered_outputs, stale_paths))
+        if args.sync_preview_snapshot:
+            preview_root = repo_root / "tooling/sync/generated/with-conditional/markdown"
+            for agent in _target_agents(args.agent):
+                preview_agent_root = preview_root / agent
+                _, rendered_outputs, stale_paths = _write_agent_outputs(
+                    agent=agent,
+                    all_commands=catalog["commands"],
+                    commands=commands,
+                    manifest_path=catalog["manifest_path"],
+                    output_base=preview_agent_root,
+                    repo_root=repo_root,
+                    include_conditional=True,
+                    force=args.force_overwrite_existing,
+                )
+                planned_outputs.append((preview_agent_root, rendered_outputs, stale_paths))
         for agent_root, rendered_outputs, stale_paths in planned_outputs:
             paths = _apply_agent_output_plan(
                 rendered_outputs=rendered_outputs,

@@ -75,7 +75,7 @@ the same `framework/scripts/manifest.yaml` source of truth.
 Run manually:
 
 ```bash
-python3 tooling/sync/generate_markdown_command_exports.py --agent all --enable-conditional --write-active-surfaces
+python3 tooling/sync/generate_markdown_command_exports.py --agent all --enable-conditional --write-active-surfaces --sync-preview-snapshot
 python3 tooling/sync/generate_markdown_command_exports.py --agent all --enable-conditional
 ```
 
@@ -92,7 +92,8 @@ Default behavior:
 - write Claude skills to `.claude/skills/*/SKILL.md`
 - this repository opts into the conditional markdown surface, so the standard
   `make command-exports-markdown` target writes both `core` and `conditional`
-  commands to the active agent surfaces via `--write-active-surfaces`
+  commands to the active agent surfaces via `--write-active-surfaces` and updates
+  the committed preview snapshot in the same invocation via `--sync-preview-snapshot`
 
 Conditional behavior:
 
@@ -102,6 +103,8 @@ Conditional behavior:
 - `--enable-conditional` alone writes the conditional preview surface
 - `--enable-conditional --write-active-surfaces` installs that surface into the
   live root agent directories for repositories that explicitly opt in
+- `--sync-preview-snapshot` can be added only together with those flags to keep
+  the tracked preview snapshot in lockstep with the live conditional install
 
 Generated files are deterministic and refuse to overwrite manual files unless
 `--force-overwrite-existing` is passed.

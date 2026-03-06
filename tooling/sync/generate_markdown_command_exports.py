@@ -114,10 +114,31 @@ def _root_output_base(
     include_conditional: bool,
     write_active_surfaces: bool,
 ) -> Path:
-    del agent
     if include_conditional and not write_active_surfaces:
-        return repo_root / "tooling/sync/generated/with-conditional/markdown"
+        return repo_root / "tooling/sync/generated/with-conditional/markdown" / agent
     return repo_root
+
+
+def _guard_conditional_surface_downgrade(
+    *,
+    agent: str,
+    all_commands: list[dict[str, Any]],
+    output_base: Path,
+    repo_root: Path,
+    include_conditional: bool,
+    force: bool,
+) -> None:
+    if include_conditional or force or output_base != repo_root:
+        return
+
+    conditional_commands = [command for command in all_commands if command["tier"] == "conditional"]
+    for command in conditional_commands:
+        path = _target_path(agent=agent, base_root=output_base, slug=command["slug"])
+        if path.exists() and _is_generated_file(path):
+            raise CommandSurfaceLoadError(
+                "live conditional markdown surfaces already exist; rerun with "
+                "--enable-conditional --write-active-surfaces to preserve them"
+            )
 
 
 def _target_path(*, agent: str, base_root: Path, slug: str) -> Path:
@@ -303,13 +324,25 @@ def _collect_stale_outputs(
 def _write_agent_outputs(
     *,
     agent: str,
+    all_commands: list[dict[str, Any]],
     commands: list[dict[str, Any]],
     manifest_path: str,
     output_base: Path,
+    repo_root: Path,
+    include_conditional: bool,
     force: bool,
 ) -> tuple[list[Path], list[tuple[Path, str]], list[Path]]:
     desired_paths: set[Path] = set()
     rendered_outputs: list[tuple[Path, str]] = []
+
+    _guard_conditional_surface_downgrade(
+        agent=agent,
+        all_commands=all_commands,
+        output_base=output_base,
+        repo_root=repo_root,
+        include_conditional=include_conditional,
+        force=force,
+    )
 
     for command in commands:
         path = _target_path(agent=agent, base_root=output_base, slug=command["slug"])
@@ -367,9 +400,12 @@ def main() -> int:
                 agent_root = root_base / agent
                 _, rendered_outputs, stale_paths = _write_agent_outputs(
                     agent=agent,
+                    all_commands=catalog["commands"],
                     commands=commands,
                     manifest_path=catalog["manifest_path"],
                     output_base=agent_root,
+                    repo_root=repo_root,
+                    include_conditional=args.enable_conditional,
                     force=args.force_overwrite_existing,
                 )
                 planned_outputs.append((agent_root, rendered_outputs, stale_paths))
@@ -392,9 +428,12 @@ def main() -> int:
             )
             _, rendered_outputs, stale_paths = _write_agent_outputs(
                 agent=agent,
+                all_commands=catalog["commands"],
                 commands=commands,
                 manifest_path=catalog["manifest_path"],
                 output_base=agent_root,
+                repo_root=repo_root,
+                include_conditional=args.enable_conditional,
                 force=args.force_overwrite_existing,
             )
             planned_outputs.append((agent_root, rendered_outputs, stale_paths))

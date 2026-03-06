@@ -270,6 +270,51 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             )
             self.assertTrue(preview_path.exists())
 
+    def test_refuses_downgrading_live_conditional_surface_without_force(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/create-pr",
+                    "tier": "core",
+                    "requires": ["pr-open-preconditions"],
+                    "next_steps": ["/pr-bots-review"],
+                },
+                {
+                    "id": "/pr-bots-review",
+                    "tier": "conditional",
+                    "requires": ["pr-bot-iteration"],
+                    "next_steps": ["/create-pr"],
+                },
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+            conditional_path = repo_root / ".opencode/commands/pr-bots-review.md"
+            conditional_path.parent.mkdir(parents=True, exist_ok=True)
+            conditional_path.write_text(
+                "---\ndescription: generated\n---\n\n"
+                + self.script.GENERATED_HEADER
+                + "\n\nExisting conditional command\n",
+                encoding="utf-8",
+            )
+
+            exit_code, _, stderr = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--agent",
+                    "opencode",
+                ]
+            )
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("live conditional markdown surfaces already exist", stderr)
+
     def test_enable_conditional_writes_to_root_surfaces(self) -> None:
         manifest_text = build_manifest(
             [

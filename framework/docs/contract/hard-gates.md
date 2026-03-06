@@ -19,7 +19,7 @@
 
 ## Gate E: ADR Consistency
 
-- ADR body and ADR index must be consistent.
+- ADR body, `docs/adr/index.json`, and `docs/decisions.md` must be consistent.
 
 ---
 

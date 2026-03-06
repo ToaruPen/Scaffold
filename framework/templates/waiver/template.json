@@ -1,0 +1,14 @@
+{
+  "request_id": "req-<id>",
+  "scope_id": "issue-<id>",
+  "run_id": "run-<id>",
+  "artifact_path": "artifacts/waivers/issue-<id>.json",
+  "waiver": {
+    "gate_id": "drift-detection",
+    "reason": "explain why exception is required",
+    "approved_by": "<approver>",
+    "approved_at": "{{approved_at_rfc3339_YYYY-MM-DDTHH:MM:SSZ}}",
+    "expiry": "{{expiry_rfc3339_YYYY-MM-DDTHH:MM:SSZ}}",
+    "scope_restriction": "single-run-only"
+  }
+}

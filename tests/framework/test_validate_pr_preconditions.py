@@ -8,7 +8,8 @@ import unittest
 from collections.abc import Mapping
 from pathlib import Path
 
-SCRIPT = Path("framework/scripts/gates/validate_pr_preconditions.py")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = REPO_ROOT / "framework/scripts/gates/validate_pr_preconditions.py"
 
 
 class ValidatePrPreconditionsTests(unittest.TestCase):
@@ -40,12 +41,6 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
             "expected": {"head_sha": "abcdef1", "base_sha": "1234567"},
             "scope_lock": {"matched": True, "head_sha": "abcdef1", "base_sha": "1234567"},
             "review_evidence": {
-                "test_review": {
-                    "status": "pass",
-                    "head_sha": "abcdef1",
-                    "base_sha": "1234567",
-                    "artifact_path": "artifacts/reviews/issue-8/run-1/test-review.json",
-                },
                 "review_cycle": {
                     "status": "pass",
                     "head_sha": "abcdef1",
@@ -57,6 +52,14 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
                     "head_sha": "abcdef1",
                     "base_sha": "1234567",
                     "artifact_path": "artifacts/reviews/issue-8/run-1/final-review.json",
+                },
+                "drift_detection": {
+                    "status": "pass",
+                    "artifact_path": "artifacts/reviews/issue-8/run-1/drift-detection.result.json",
+                },
+                "adr_index": {
+                    "status": "pass",
+                    "artifact_path": "artifacts/reviews/issue-8/run-1/adr-index.result.json",
                 },
             },
         }
@@ -76,11 +79,6 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
             "expected": {"head_sha": "abcdef1"},
             "scope_lock": {"matched": False, "head_sha": "abcdef1"},
             "review_evidence": {
-                "test_review": {
-                    "status": "pass",
-                    "head_sha": "abcdef1",
-                    "artifact_path": "x",
-                },
                 "review_cycle": {
                     "status": "pass",
                     "head_sha": "abcdef1",
@@ -91,6 +89,8 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
                     "head_sha": "abcdef1",
                     "artifact_path": "z",
                 },
+                "drift_detection": {"status": "pass", "artifact_path": "drift"},
+                "adr_index": {"status": "pass", "artifact_path": "adr"},
             },
         }
 
@@ -109,12 +109,6 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
             "expected": {"head_sha": "abcdef1", "base_sha": "1234567"},
             "scope_lock": {"matched": True, "head_sha": "abcdef1", "base_sha": "9999999"},
             "review_evidence": {
-                "test_review": {
-                    "status": "pass",
-                    "head_sha": "abcdef1",
-                    "base_sha": "1234567",
-                    "artifact_path": "x",
-                },
                 "review_cycle": {
                     "status": "pass",
                     "head_sha": "abcdef1",
@@ -127,6 +121,8 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
                     "base_sha": "1234567",
                     "artifact_path": "z",
                 },
+                "drift_detection": {"status": "pass", "artifact_path": "drift"},
+                "adr_index": {"status": "pass", "artifact_path": "adr"},
             },
         }
 
@@ -146,15 +142,18 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
             "expected": {"head_sha": "abcdef1"},
             "scope_lock": {"matched": True, "head_sha": "abcdef1"},
             "review_evidence": {
-                "test_review": {
-                    "status": "pass",
-                    "head_sha": "abcdef1",
-                    "artifact_path": "x",
-                },
                 "review_cycle": {
                     "status": "pass",
                     "head_sha": "abcdef1",
                     "artifact_path": "y",
+                },
+                "drift_detection": {
+                    "status": "pass",
+                    "artifact_path": "drift",
+                },
+                "adr_index": {
+                    "status": "pass",
+                    "artifact_path": "adr",
                 },
             },
         }
@@ -164,6 +163,41 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
         body = json.loads(result.stdout)
         self.assertEqual(body["status"], "fail")
         self.assertIn("final_review_missing", body["mismatch_reasons"])
+
+    def test_blocks_when_drift_or_adr_gate_is_missing_or_failed(self) -> None:
+        payload = {
+            "request_id": "req-pr-3b",
+            "scope_id": "issue-8",
+            "run_id": "run-3b",
+            "artifact_path": "artifacts/reviews/issue-8/run-3b/pr-preconditions.json",
+            "expected": {"head_sha": "abcdef1"},
+            "scope_lock": {"matched": True, "head_sha": "abcdef1"},
+            "review_evidence": {
+                "review_cycle": {
+                    "status": "pass",
+                    "head_sha": "abcdef1",
+                    "artifact_path": "y",
+                },
+                "final_review": {
+                    "status": "pass",
+                    "head_sha": "abcdef1",
+                    "artifact_path": "z",
+                },
+                "drift_detection": {
+                    "status": "blocked",
+                    "artifact_path": "drift",
+                },
+            },
+        }
+
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["status"], "fail")
+        self.assertIn("drift_detection_not_passed", body["mismatch_reasons"])
+        self.assertIn("adr_index_missing", body["mismatch_reasons"])
+        self.assertEqual(body["review_evidence"]["drift_detection"]["status"], "fail")
+        self.assertEqual(body["review_evidence"]["adr_index"]["status"], "fail")
 
     def test_returns_invalid_input_when_expected_missing(self) -> None:
         payload = {

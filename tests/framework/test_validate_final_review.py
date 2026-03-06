@@ -77,6 +77,99 @@ class ValidateFinalReviewTests(unittest.TestCase):
         self.assertEqual(body["status"], "fail")
         self.assertIn("final_review_not_approved", body["mismatch_reasons"])
 
+    def test_blocks_when_head_sha_mismatch(self) -> None:
+        payload = {
+            "request_id": "req-fr-2a",
+            "scope_id": "issue-7",
+            "run_id": "run-2a",
+            "artifact_path": "artifacts/reviews/issue-7/run-2a/final-review.json",
+            "expected": {"head_sha": "abcdef1"},
+            "review": {
+                "status": "approved",
+                "summary": "ok",
+                "evidence": {
+                    "head_sha": "abc9999",
+                    "artifact_path": "artifacts/reviews/issue-7/run-2a/final-review.json",
+                },
+            },
+        }
+
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["status"], "fail")
+        self.assertIn("head_sha_mismatch", body["mismatch_reasons"])
+
+    def test_blocks_when_base_sha_missing(self) -> None:
+        payload = {
+            "request_id": "req-fr-2b",
+            "scope_id": "issue-7",
+            "run_id": "run-2b",
+            "artifact_path": "artifacts/reviews/issue-7/run-2b/final-review.json",
+            "expected": {"head_sha": "abcdef1", "base_sha": "1234567"},
+            "review": {
+                "status": "approved",
+                "summary": "ok",
+                "evidence": {
+                    "head_sha": "abcdef1",
+                    "artifact_path": "artifacts/reviews/issue-7/run-2b/final-review.json",
+                },
+            },
+        }
+
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["status"], "fail")
+        self.assertIn("base_sha_missing", body["mismatch_reasons"])
+
+    def test_blocks_when_base_sha_mismatch(self) -> None:
+        payload = {
+            "request_id": "req-fr-2c",
+            "scope_id": "issue-7",
+            "run_id": "run-2c",
+            "artifact_path": "artifacts/reviews/issue-7/run-2c/final-review.json",
+            "expected": {"head_sha": "abcdef1", "base_sha": "1234567"},
+            "review": {
+                "status": "approved",
+                "summary": "ok",
+                "evidence": {
+                    "head_sha": "abcdef1",
+                    "base_sha": "7654321",
+                    "artifact_path": "artifacts/reviews/issue-7/run-2c/final-review.json",
+                },
+            },
+        }
+
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["status"], "fail")
+        self.assertIn("base_sha_mismatch", body["mismatch_reasons"])
+
+    def test_blocks_when_artifact_path_mismatch(self) -> None:
+        payload = {
+            "request_id": "req-fr-2d",
+            "scope_id": "issue-7",
+            "run_id": "run-2d",
+            "artifact_path": "artifacts/reviews/issue-7/run-2d/final-review.json",
+            "expected": {"head_sha": "abcdef1"},
+            "review": {
+                "status": "approved",
+                "summary": "ok",
+                "evidence": {
+                    "head_sha": "abcdef1",
+                    "artifact_path": "artifacts/reviews/issue-7/run-2d/other.json",
+                },
+            },
+        }
+
+        result = self._run(payload)
+        self.assertEqual(result.returncode, 2)
+        body = json.loads(result.stdout)
+        self.assertEqual(body["status"], "fail")
+        self.assertIn("artifact_path_mismatch", body["mismatch_reasons"])
+
     def test_returns_invalid_input_when_evidence_missing(self) -> None:
         payload = {
             "request_id": "req-fr-3",

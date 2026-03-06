@@ -1,0 +1,42 @@
+{
+  "agent": "claude",
+  "source_manifest": "framework/scripts/manifest.yaml",
+  "policy": {
+    "core_always_enabled": true,
+    "conditional_enabled": true
+  },
+  "tiers": {
+    "core": [
+      "/create-epic",
+      "/create-issues",
+      "/create-pr",
+      "/create-prd",
+      "/estimation",
+      "/final-review",
+      "/impl",
+      "/research",
+      "/review-cycle",
+      "/tdd",
+      "/worktree"
+    ],
+    "conditional": [
+      "/pr-bots-review",
+      "/waiver"
+    ]
+  },
+  "commands": [
+    "/create-epic",
+    "/create-issues",
+    "/create-pr",
+    "/create-prd",
+    "/estimation",
+    "/final-review",
+    "/impl",
+    "/research",
+    "/review-cycle",
+    "/tdd",
+    "/worktree",
+    "/pr-bots-review",
+    "/waiver"
+  ]
+}

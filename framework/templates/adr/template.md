@@ -1,13 +1,32 @@
 # ADR Template
 
-## Decision ID
+## ADR ID
+- ADR-XXX
+
+## Title
+
+## Status
+- Proposed | Accepted | Superseded | Deprecated
+
+## Date
+- YYYY-MM-DD
+
+## Decision Summary
+- Short summary of the decision
 
 ## Context
 
 ## Decision
 
-## Alternatives
-
 ## Consequences
+### Positive
+-
 
-## Verification
+### Negative
+-
+
+## Supersedes (Optional)
+
+
+## References
+- Issue: https://github.com/<org>/<repo>/issues/<number>

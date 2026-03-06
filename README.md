@@ -37,8 +37,8 @@ Scaffold is a source repository for a reusable AI-assisted development framework
 
 ## Quality Baseline
 
-- Install dev tools: `make install-dev`
-- Run full checks: `make verify`
+- Install dev tools into `.venv`: `make install-dev`
+- Run full checks from `.venv/bin`: `make verify`
 - Optional local hook flow: `pre-commit install` then `make pre-commit`
 - Commit message lint hook: `pre-commit install --hook-type commit-msg`
 - Quick commitlint smoke test: `make commitlint-check`
@@ -47,6 +47,7 @@ Scaffold is a source repository for a reusable AI-assisted development framework
 Current baseline checks:
 
 - Lint: `ruff check`
+- Shell lint: `shellcheck`
 - Ruff rule groups: `E,F,I,W,B,PLE,UP,RUF,C4,C90,SIM,PLC,PLW,ANN,PLR`
 - McCabe complexity limit: `max-complexity = 10`
 - Format: `ruff format --check`

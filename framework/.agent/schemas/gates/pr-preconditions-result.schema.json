@@ -64,14 +64,17 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "test_review": {
-          "$ref": "#/$defs/ReviewStageEvidence"
-        },
         "review_cycle": {
           "$ref": "#/$defs/ReviewStageEvidence"
         },
         "final_review": {
           "$ref": "#/$defs/ReviewStageEvidence"
+        },
+        "drift_detection": {
+          "$ref": "#/$defs/GateStageEvidence"
+        },
+        "adr_index": {
+          "$ref": "#/$defs/GateStageEvidence"
         }
       }
     },
@@ -121,6 +124,27 @@
         "base_sha": {
           "type": "string",
           "minLength": 7
+        },
+        "artifact_path": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "GateStageEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "artifact_path"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail"
+          ]
         },
         "artifact_path": {
           "type": "string",

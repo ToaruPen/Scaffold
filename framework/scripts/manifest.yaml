@@ -11,17 +11,26 @@ contracts:
   - id: research-before-spec
     description: Research artifact exists before PRD/Epic creation
     validator: framework/scripts/gates/validate_research_contract.py
-    status: planned
+    result_schema: framework/.agent/schemas/gates/research-contract-result.schema.json
+    status: implemented
 
   - id: spec-quality-minimum
     description: PRD/Epic include measurable acceptance criteria and out-of-scope section
     validator: framework/scripts/gates/validate_spec_quality.py
-    status: planned
+    result_schema: framework/.agent/schemas/gates/spec-quality-result.schema.json
+    status: implemented
 
   - id: issue-change-targets-declared
     description: Issue declares estimated change targets for parallel overlap detection
     validator: framework/scripts/gates/validate_issue_targets.py
-    status: planned
+    result_schema: framework/.agent/schemas/gates/issue-targets-result.schema.json
+    status: implemented
+
+  - id: drift-detection
+    description: Declared issue targets and actual changed paths must not drift
+    validator: framework/scripts/gates/validate_drift_detection.py
+    result_schema: framework/.agent/schemas/gates/drift-detection-result.schema.json
+    status: implemented
 
   - id: scope-lock
     description: Scope identity (issue/branch/pr head/range) must match before high-impact operations
@@ -47,12 +56,6 @@ contracts:
     result_schema: framework/.agent/schemas/gates/mode-selection-result.schema.json
     status: implemented
 
-  - id: test-review-evidence
-    description: test-review evidence exists and passes contract checks
-    validator: framework/scripts/gates/validate_test_review.py
-    result_schema: framework/.agent/schemas/gates/test-review-result.schema.json
-    status: implemented
-
   - id: review-cycle-evidence
     description: review-cycle evidence exists and passes contract checks
     validator: framework/scripts/gates/validate_review_cycle.py
@@ -60,7 +63,7 @@ contracts:
     status: implemented
 
   - id: final-review-consistency
-    description: final-review validates drift and overall completion consistency
+    description: final-review evidence status and commit/range linkage are consistent
     validator: framework/scripts/gates/validate_final_review.py
     result_schema: framework/.agent/schemas/gates/final-review-result.schema.json
     status: implemented
@@ -80,12 +83,20 @@ contracts:
   - id: pr-bot-iteration
     description: Bot feedback loop artifacts are normalized and traceable
     validator: framework/scripts/gates/validate_pr_bot_iteration.py
-    status: planned
+    result_schema: framework/.agent/schemas/gates/pr-bot-iteration-result.schema.json
+    status: implemented
 
   - id: adr-index-consistency
-    description: ADR index and body files are consistent
+    description: ADR body, JSON index, and decisions index are consistent
     validator: framework/scripts/gates/validate_adr_index.py
-    status: planned
+    result_schema: framework/.agent/schemas/gates/adr-index-result.schema.json
+    status: implemented
+
+  - id: waiver-exception
+    description: Exception records are explicit, auditable, and contract-shaped
+    validator: framework/scripts/gates/validate_waiver.py
+    result_schema: framework/.agent/schemas/gates/waiver-result.schema.json
+    status: implemented
 
 must_command_contracts:
   /research:
@@ -124,11 +135,6 @@ must_command_contracts:
       - scope-lock
       - overlap-safety
 
-  /test-review:
-    requires:
-      - test-review-evidence
-      - review-evidence-link
-
   /review-cycle:
     requires:
       - review-cycle-evidence
@@ -137,6 +143,7 @@ must_command_contracts:
   /final-review:
     requires:
       - final-review-consistency
+      - drift-detection
       - review-evidence-link
       - adr-index-consistency
 
@@ -149,6 +156,25 @@ must_command_contracts:
   /pr-bots-review:
     requires:
       - pr-bot-iteration
+
+  /waiver:
+    requires:
+      - waiver-exception
+
+command_tiers:
+  /research: core
+  /create-prd: core
+  /create-epic: core
+  /create-issues: core
+  /estimation: core
+  /impl: core
+  /tdd: core
+  /worktree: core
+  /review-cycle: core
+  /final-review: core
+  /create-pr: core
+  /pr-bots-review: conditional
+  /waiver: conditional
 
 adapter_interfaces:
   review_engine:

@@ -34,12 +34,12 @@ def _matches_target(target: str, changed_path: str) -> bool:
 def _require_actual_changes_allow_empty(payload: dict[str, Any]) -> list[str]:
     raw = payload.get("actual_changes")
     if not isinstance(raw, list):
-        raise ValueError("missing or invalid list: actual_changes")
+        raise TypeError("missing or invalid list: actual_changes")
 
     values: list[str] = []
     for item in raw:
         if not isinstance(item, str) or not item.strip():
-            raise ValueError("invalid string element: actual_changes")
+            raise TypeError("invalid string element: actual_changes")
         values.append(item.strip())
     return values
 
@@ -98,7 +98,7 @@ def main() -> int:
         payload = read_json(Path(args.input))
         result, passed = _build_result(payload)
         exit_code = 0 if passed else 2
-    except ValueError as exc:
+    except (TypeError, ValueError) as exc:
         result = {
             "request_id": "unknown",
             "scope_id": "unknown",

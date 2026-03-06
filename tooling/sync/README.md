@@ -88,8 +88,8 @@ make command-exports-markdown-conditional
 
 Default behavior:
 
-- write OpenCode command files to `.opencode/commands/*.md`
-- write Claude skills to `.claude/skills/*/SKILL.md`
+- write OpenCode command files to `framework/.opencode/commands/*.md`
+- write Claude skills to `framework/.claude/skills/*/SKILL.md`
 - this repository opts into the conditional markdown surface, so the standard
   `make command-exports-markdown` target writes both `core` and `conditional`
   commands to the active agent surfaces via `--write-active-surfaces` and updates
@@ -102,7 +102,8 @@ Conditional behavior:
   generated surface
 - `--enable-conditional` alone writes the conditional preview surface
 - `--enable-conditional --write-active-surfaces` installs that surface into the
-  live root agent directories for repositories that explicitly opt in
+  live distributable agent directories under `framework/` for repositories that
+  explicitly opt in
 - `--sync-preview-snapshot` can be added only together with those flags to keep
   the tracked preview snapshot in lockstep with the live conditional install
 
@@ -121,10 +122,10 @@ filesystem root.
   - repository-specific behavior comes from `AGENTS.md` and generated append files
   - Scaffold does not generate Codex command markdown files
 - `Claude Code`
-  - Scaffold exports command-aligned guidance as `.claude/skills/*/SKILL.md`
+  - Scaffold exports command-aligned guidance as `framework/.claude/skills/*/SKILL.md`
   - repository memory and standing instructions come from `CLAUDE.md`
 - `OpenCode`
-  - Scaffold exports command files to `.opencode/commands/*.md`
+  - Scaffold exports command files to `framework/.opencode/commands/*.md`
   - repository instruction precedence is `AGENTS.md` first, `CLAUDE.md` fallback compatible
 
 The generated Markdown exports are concise contract cards, not long procedural
@@ -132,8 +133,8 @@ manuals. Their role is to bridge each CLI's recognition format back to the same
 Scaffold contracts in `framework/scripts/manifest.yaml` and
 `framework/docs/contract/workflow-map.md`.
 
-For this repository, the committed root-level Markdown surfaces are the active
-conditional profile. The preview tree under
+For this repository, the committed distributable Markdown surfaces live under
+`framework/` as the active conditional profile. The preview tree under
 `tooling/sync/generated/with-conditional/markdown/` remains available as a
 regeneration snapshot for drift checks.
 

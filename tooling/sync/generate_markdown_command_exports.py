@@ -121,7 +121,11 @@ def _root_output_base(
 ) -> Path:
     if include_conditional and not write_active_surfaces:
         return repo_root / "tooling/sync/generated/with-conditional/markdown" / agent
-    return repo_root
+    return repo_root / "framework"
+
+
+def _live_surface_root(repo_root: Path) -> Path:
+    return repo_root / "framework"
 
 
 def _guard_conditional_surface_downgrade(
@@ -133,7 +137,7 @@ def _guard_conditional_surface_downgrade(
     include_conditional: bool,
     force: bool,
 ) -> None:
-    if include_conditional or force or output_base != repo_root:
+    if include_conditional or force or output_base != _live_surface_root(repo_root):
         return
 
     conditional_commands = [command for command in all_commands if command["tier"] == "conditional"]

@@ -44,6 +44,18 @@ def _load_manifest_builder() -> Callable[..., str]:
 build_manifest: Callable[..., str] = _load_manifest_builder()
 
 
+def _active_root(repo_root: Path) -> Path:
+    return repo_root / "framework"
+
+
+def _active_opencode_path(repo_root: Path, slug: str) -> Path:
+    return _active_root(repo_root) / ".opencode/commands" / f"{slug}.md"
+
+
+def _active_claude_path(repo_root: Path, slug: str) -> Path:
+    return _active_root(repo_root) / ".claude/skills" / slug / "SKILL.md"
+
+
 class GenerateMarkdownCommandExportsTests(unittest.TestCase):
     script: ModuleType
 
@@ -97,7 +109,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             )
 
             self.assertEqual(exit_code, 0)
-            research_path = repo_root / ".opencode/commands/research.md"
+            research_path = _active_opencode_path(repo_root, "research")
             self.assertTrue(research_path.exists())
             content = research_path.read_text(encoding="utf-8")
             self.assertIn("description: Summary for /research", content)
@@ -139,7 +151,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             )
 
             self.assertEqual(exit_code, 0)
-            self.assertTrue((repo_root / ".opencode/commands/research.md").exists())
+            self.assertTrue(_active_opencode_path(repo_root, "research").exists())
 
     def test_filters_conditional_next_steps_from_root_core_exports(self) -> None:
         manifest_text = build_manifest(
@@ -176,7 +188,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             )
 
             self.assertEqual(exit_code, 0)
-            content = (repo_root / ".opencode/commands/create-pr.md").read_text(encoding="utf-8")
+            content = _active_opencode_path(repo_root, "create-pr").read_text(encoding="utf-8")
             self.assertIn("## Next Commands", content)
             self.assertNotIn("`/pr-bots-review`", content)
 
@@ -215,7 +227,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             )
 
             self.assertEqual(exit_code, 0)
-            skill_path = repo_root / ".claude/skills/worktree/SKILL.md"
+            skill_path = _active_claude_path(repo_root, "worktree")
             self.assertTrue(skill_path.exists())
             content = skill_path.read_text(encoding="utf-8")
             self.assertIn("name: worktree", content)
@@ -243,7 +255,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             repo_root = Path(tmp)
             manifest_path = repo_root / "manifest.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
-            root_opencode = repo_root / ".opencode/commands/research.md"
+            root_opencode = _active_opencode_path(repo_root, "research")
             root_opencode.parent.mkdir(parents=True, exist_ok=True)
             root_opencode.write_text("manual root command\n", encoding="utf-8")
 
@@ -292,7 +304,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             repo_root = Path(tmp)
             manifest_path = repo_root / "manifest.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
-            conditional_path = repo_root / ".opencode/commands/pr-bots-review.md"
+            conditional_path = _active_opencode_path(repo_root, "pr-bots-review")
             conditional_path.parent.mkdir(parents=True, exist_ok=True)
             conditional_path.write_text(
                 "---\ndescription: generated\n---\n\n"
@@ -353,9 +365,9 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             )
 
             self.assertEqual(exit_code, 0)
-            self.assertTrue((repo_root / ".opencode/commands/pr-bots-review.md").exists())
-            self.assertTrue((repo_root / ".claude/skills/pr-bots-review/SKILL.md").exists())
-            create_pr = (repo_root / ".opencode/commands/create-pr.md").read_text(encoding="utf-8")
+            self.assertTrue(_active_opencode_path(repo_root, "pr-bots-review").exists())
+            self.assertTrue(_active_claude_path(repo_root, "pr-bots-review").exists())
+            create_pr = _active_opencode_path(repo_root, "create-pr").read_text(encoding="utf-8")
             self.assertIn("`/pr-bots-review`", create_pr)
 
     def test_output_root_preserves_unrelated_existing_files(self) -> None:
@@ -447,7 +459,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             repo_root = Path(tmp)
             manifest_path = repo_root / "manifest.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
-            stale_manual = repo_root / ".opencode/commands/obsolete.md"
+            stale_manual = _active_opencode_path(repo_root, "obsolete")
             stale_manual.parent.mkdir(parents=True, exist_ok=True)
             stale_manual.write_text("manual stale\n", encoding="utf-8")
 
@@ -482,7 +494,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             repo_root = Path(tmp)
             manifest_path = repo_root / "manifest.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
-            stale_path = repo_root / ".opencode/commands/old.md"
+            stale_path = _active_opencode_path(repo_root, "old")
             stale_path.parent.mkdir(parents=True, exist_ok=True)
             stale_path.write_text(
                 "---\ndescription: stale\n---\n\n" + self.script.GENERATED_HEADER + "\n",
@@ -519,7 +531,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             repo_root = Path(tmp)
             manifest_path = repo_root / "manifest.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
-            manual_path = repo_root / ".opencode/commands/research.md"
+            manual_path = _active_opencode_path(repo_root, "research")
             manual_path.parent.mkdir(parents=True, exist_ok=True)
             manual_path.write_text("manual\n", encoding="utf-8")
 
@@ -553,7 +565,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             repo_root = Path(tmp)
             manifest_path = repo_root / "manifest.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
-            manual_path = repo_root / ".opencode/commands/research.md"
+            manual_path = _active_opencode_path(repo_root, "research")
             manual_path.parent.mkdir(parents=True, exist_ok=True)
             manual_path.write_text(
                 f"Manual note mentioning {self.script.GENERATED_HEADER}\n",
@@ -590,7 +602,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             repo_root = Path(tmp)
             manifest_path = repo_root / "manifest.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
-            desired_generated = repo_root / ".opencode/commands/research.md"
+            desired_generated = _active_opencode_path(repo_root, "research")
             desired_generated.parent.mkdir(parents=True, exist_ok=True)
             desired_generated.write_text(
                 "---\ndescription: generated\n---\n\n"
@@ -598,7 +610,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
                 + "\n\nOriginal generated content\n",
                 encoding="utf-8",
             )
-            stale_manual = repo_root / ".opencode/commands/obsolete.md"
+            stale_manual = _active_opencode_path(repo_root, "obsolete")
             stale_manual.write_text("manual stale\n", encoding="utf-8")
 
             exit_code, _, stderr = self._run_script(
@@ -637,7 +649,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             repo_root = Path(tmp)
             manifest_path = repo_root / "manifest.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
-            opencode_target = repo_root / ".opencode/commands/research.md"
+            opencode_target = _active_opencode_path(repo_root, "research")
             opencode_target.parent.mkdir(parents=True, exist_ok=True)
             opencode_target.write_text("manual\n", encoding="utf-8")
 
@@ -655,7 +667,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 2)
             self.assertIn("refusing to overwrite without --force-overwrite-existing", stderr)
-            self.assertFalse((repo_root / ".claude/skills/research/SKILL.md").exists())
+            self.assertFalse(_active_claude_path(repo_root, "research").exists())
 
     def test_repository_generated_markdown_exports_are_in_sync(self) -> None:
         catalog = load_command_catalog(REPO_ROOT, REPO_ROOT / "framework/scripts/manifest.yaml")
@@ -698,19 +710,19 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             self.assertEqual(conditional_exit_code, 0)
             for command in active_commands:
                 opencode_expected = (
-                    active_repo_root / ".opencode/commands" / f"{command['slug']}.md"
+                    _active_opencode_path(active_repo_root, command["slug"])
                 ).read_text(encoding="utf-8")
-                opencode_actual = (
-                    REPO_ROOT / ".opencode/commands" / f"{command['slug']}.md"
-                ).read_text(encoding="utf-8")
+                opencode_actual = (_active_opencode_path(REPO_ROOT, command["slug"])).read_text(
+                    encoding="utf-8"
+                )
                 self.assertEqual(opencode_actual, opencode_expected)
 
                 claude_expected = (
-                    active_repo_root / ".claude/skills" / command["slug"] / "SKILL.md"
+                    _active_claude_path(active_repo_root, command["slug"])
                 ).read_text(encoding="utf-8")
-                claude_actual = (
-                    REPO_ROOT / ".claude/skills" / command["slug"] / "SKILL.md"
-                ).read_text(encoding="utf-8")
+                claude_actual = (_active_claude_path(REPO_ROOT, command["slug"])).read_text(
+                    encoding="utf-8"
+                )
                 self.assertEqual(claude_actual, claude_expected)
 
             for command in conditional_commands:
@@ -908,7 +920,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 2)
             self.assertIn("is stale but not generated", stderr)
-            self.assertFalse((repo_root / ".opencode/commands/research.md").exists())
+            self.assertFalse(_active_opencode_path(repo_root, "research").exists())
 
 
 if __name__ == "__main__":

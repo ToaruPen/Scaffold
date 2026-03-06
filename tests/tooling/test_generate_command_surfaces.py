@@ -220,7 +220,7 @@ command_metadata:
                 "claude",
             ]
 
-            exit_code, _, stderr = self._run_script_in_cwd(argv, tmp_path)
+            exit_code, _, _ = self._run_script_in_cwd(argv, tmp_path)
             self.assertEqual(exit_code, 0)
             payload = json.loads((output_root / "claude.commands.json").read_text(encoding="utf-8"))
             self.assertEqual(payload["commands"], ["/research"])

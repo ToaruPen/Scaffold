@@ -1035,14 +1035,13 @@ command_metadata:
                 stale_paths: list[Path],
                 output_base: Path,
             ) -> list[Path]:
-                del rendered_outputs, stale_paths
                 if "tooling/sync/generated/with-conditional/markdown" in str(output_base):
                     raise CommandSurfaceLoadError("preview write failed")
                 return cast(
                     list[Path],
                     original_apply(
-                        rendered_outputs=[],
-                        stale_paths=[],
+                        rendered_outputs=rendered_outputs,
+                        stale_paths=stale_paths,
                         output_base=output_base,
                     ),
                 )

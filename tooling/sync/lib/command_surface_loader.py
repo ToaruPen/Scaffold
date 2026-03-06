@@ -32,7 +32,8 @@ def _resolve_path(repo_root: Path, raw: str | Path) -> Path:
 def _normalize_manifest_ref(repo_root: Path, resolved_path: Path) -> str:
     root = repo_root.resolve()
     try:
-        return str(resolved_path.resolve().relative_to(root))
+        relative = resolved_path.resolve().relative_to(root)
+        return relative.as_posix()
     except ValueError as exc:
         raise CommandSurfaceLoadError("manifest_path must stay within repo_root") from exc
 
@@ -70,6 +71,25 @@ def _is_valid_command_id(value: object) -> bool:
     if ".." in value or "\\" in value:
         return False
     return bool(_COMMAND_ID_PATTERN.fullmatch(value))
+
+
+def _slug_key(command_id: str) -> str:
+    return command_id.removeprefix("/").casefold()
+
+
+def _raise_on_slug_collisions(command_ids: list[str], *, field_name: str) -> None:
+    slug_map: dict[str, str] = {}
+    duplicates: list[str] = []
+    for command_id in command_ids:
+        key = _slug_key(command_id)
+        existing = slug_map.get(key)
+        if existing is None:
+            slug_map[key] = command_id
+            continue
+        duplicates.extend([existing, command_id])
+    if duplicates:
+        unique_duplicates = ", ".join(sorted(set(duplicates)))
+        raise CommandSurfaceLoadError(f"{field_name} contains slug collisions: {unique_duplicates}")
 
 
 def load_command_catalog(
@@ -119,6 +139,7 @@ def load_command_catalog(
         raise CommandSurfaceLoadError(f"command_tiers contains invalid entries: {details}")
 
     command_ids = sorted(str(command) for command in command_tiers)
+    _raise_on_slug_collisions(command_ids, field_name="command_tiers")
     must_command_ids = set(must_command_contracts)
     tier_command_ids = set(command_ids)
 
@@ -139,6 +160,9 @@ def load_command_catalog(
         raise CommandSurfaceLoadError(f"command_metadata contains invalid entries: {details}")
 
     metadata_ids = set(command_metadata)
+    _raise_on_slug_collisions(
+        sorted(str(command) for command in metadata_ids), field_name="command_metadata"
+    )
     if require_metadata:
         missing_metadata = sorted(
             command for command in tier_command_ids if command not in metadata_ids

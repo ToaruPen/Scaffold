@@ -376,6 +376,90 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             self.assertEqual(exit_code, 2)
             self.assertIn("refusing to overwrite without --force-overwrite-existing", stderr)
 
+    def test_banner_text_inside_manual_file_is_not_treated_as_generated(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+            manual_path = repo_root / ".opencode/commands/research.md"
+            manual_path.parent.mkdir(parents=True, exist_ok=True)
+            manual_path.write_text(
+                f"Manual note mentioning {self.script.GENERATED_HEADER}\n",
+                encoding="utf-8",
+            )
+
+            exit_code, _, stderr = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--agent",
+                    "opencode",
+                ]
+            )
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("refusing to overwrite without --force-overwrite-existing", stderr)
+
+    def test_stale_manual_conflict_fails_before_writing_new_outputs(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+            desired_generated = repo_root / ".opencode/commands/research.md"
+            desired_generated.parent.mkdir(parents=True, exist_ok=True)
+            desired_generated.write_text(
+                "---\ndescription: generated\n---\n\n"
+                + self.script.GENERATED_HEADER
+                + "\n\nOriginal generated content\n",
+                encoding="utf-8",
+            )
+            stale_manual = repo_root / ".opencode/commands/obsolete.md"
+            stale_manual.write_text("manual stale\n", encoding="utf-8")
+
+            exit_code, _, stderr = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--agent",
+                    "opencode",
+                ]
+            )
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("is stale but not generated", stderr)
+            self.assertEqual(
+                desired_generated.read_text(encoding="utf-8"),
+                "---\ndescription: generated\n---\n\n"
+                + self.script.GENERATED_HEADER
+                + "\n\nOriginal generated content\n",
+            )
+
     def test_repository_generated_markdown_exports_are_in_sync(self) -> None:
         catalog = load_command_catalog(REPO_ROOT, REPO_ROOT / "framework/scripts/manifest.yaml")
         core_commands = [command for command in catalog["commands"] if command["tier"] == "core"]

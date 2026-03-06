@@ -87,6 +87,7 @@ def _build_surface(
 
 def main() -> int:
     args = _parse_args()
+    runtime_root = Path.cwd()
     output_root = (
         Path(args.output_root)
         if args.output_root is not None
@@ -94,7 +95,7 @@ def main() -> int:
     )
 
     try:
-        catalog = load_command_catalog(REPO_ROOT, args.manifest)
+        catalog = load_command_catalog(runtime_root, args.manifest)
         output_root.mkdir(parents=True, exist_ok=True)
         for agent in _target_agents(args.agent):
             payload = _build_surface(

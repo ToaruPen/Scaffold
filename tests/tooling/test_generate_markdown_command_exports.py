@@ -386,6 +386,41 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             self.assertEqual(exit_code, 2)
             self.assertIn("refusing to overwrite without --force-overwrite-existing", stderr)
 
+    def test_force_overwrite_allows_removing_stale_manual_files(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+            stale_manual = repo_root / ".opencode/commands/obsolete.md"
+            stale_manual.parent.mkdir(parents=True, exist_ok=True)
+            stale_manual.write_text("manual stale\n", encoding="utf-8")
+
+            exit_code, _, _ = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--agent",
+                    "opencode",
+                    "--force-overwrite-existing",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            self.assertFalse(stale_manual.exists())
+
     def test_removes_stale_generated_files(self) -> None:
         manifest_text = build_manifest(
             [

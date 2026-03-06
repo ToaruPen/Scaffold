@@ -70,7 +70,7 @@ def _resolve_repo_root(raw: str) -> Path:
     root = Path(raw)
     if root.is_absolute():
         return root
-    return REPO_ROOT / root
+    return Path.cwd() / root
 
 
 def _is_generated_file(path: Path) -> bool:
@@ -298,9 +298,9 @@ def _write_agent_outputs(
     manifest_path: str,
     output_base: Path,
     force: bool,
-) -> list[Path]:
+) -> tuple[list[Path], list[tuple[Path, str]], list[Path]]:
     desired_paths: set[Path] = set()
-    written_paths: list[Path] = []
+    rendered_outputs: list[tuple[Path, str]] = []
 
     for command in commands:
         path = _target_path(agent=agent, base_root=output_base, slug=command["slug"])
@@ -313,11 +313,23 @@ def _write_agent_outputs(
 
     for command in commands:
         path = _target_path(agent=agent, base_root=output_base, slug=command["slug"])
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            _render_command(agent=agent, command=command, manifest_path=manifest_path),
-            encoding="utf-8",
+        rendered_outputs.append(
+            (path, _render_command(agent=agent, command=command, manifest_path=manifest_path))
         )
+
+    return sorted(desired_paths), rendered_outputs, stale_paths
+
+
+def _apply_agent_output_plan(
+    *,
+    rendered_outputs: list[tuple[Path, str]],
+    stale_paths: list[Path],
+    output_base: Path,
+) -> list[Path]:
+    written_paths: list[Path] = []
+    for path, content in rendered_outputs:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
         written_paths.append(path)
 
     _remove_stale_outputs(stale_paths, output_base=output_base)
@@ -334,17 +346,25 @@ def main() -> int:
         commands = _filter_commands_for_surface(
             catalog["commands"], include_conditional=args.enable_conditional
         )
+        planned_outputs: list[tuple[Path, list[tuple[Path, str]], list[Path]]] = []
 
         if output_root is not None:
             root_base = _resolve_output_root(repo_root, output_root)
             for agent in _target_agents(args.agent):
                 agent_root = root_base / agent
-                paths = _write_agent_outputs(
+                _, rendered_outputs, stale_paths = _write_agent_outputs(
                     agent=agent,
                     commands=commands,
                     manifest_path=catalog["manifest_path"],
                     output_base=agent_root,
                     force=args.force_overwrite_existing,
+                )
+                planned_outputs.append((agent_root, rendered_outputs, stale_paths))
+            for agent_root, rendered_outputs, stale_paths in planned_outputs:
+                paths = _apply_agent_output_plan(
+                    rendered_outputs=rendered_outputs,
+                    stale_paths=stale_paths,
+                    output_base=agent_root,
                 )
                 for path in paths:
                     print(path)
@@ -356,12 +376,19 @@ def main() -> int:
                 repo_root=repo_root,
                 include_conditional=args.enable_conditional,
             )
-            paths = _write_agent_outputs(
+            _, rendered_outputs, stale_paths = _write_agent_outputs(
                 agent=agent,
                 commands=commands,
                 manifest_path=catalog["manifest_path"],
                 output_base=agent_root,
                 force=args.force_overwrite_existing,
+            )
+            planned_outputs.append((agent_root, rendered_outputs, stale_paths))
+        for agent_root, rendered_outputs, stale_paths in planned_outputs:
+            paths = _apply_agent_output_plan(
+                rendered_outputs=rendered_outputs,
+                stale_paths=stale_paths,
+                output_base=agent_root,
             )
             for path in paths:
                 print(path)

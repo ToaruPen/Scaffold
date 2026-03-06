@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import os
 import sys
 import tempfile
 import unittest
@@ -102,6 +103,42 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             self.assertIn("# /research", content)
             self.assertIn("`research-before-spec`", content)
             self.assertIn("- `manifest.yaml`", content)
+
+    def test_resolves_relative_repo_root_from_current_working_directory(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            repo_root = tmp_path / "repo"
+            repo_root.mkdir()
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            old_cwd = Path.cwd()
+            self.addCleanup(os.chdir, old_cwd)
+            os.chdir(tmp_path)
+            exit_code, _, _ = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    "repo",
+                    "--manifest",
+                    "manifest.yaml",
+                    "--agent",
+                    "opencode",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((repo_root / ".opencode/commands/research.md").exists())
 
     def test_filters_conditional_next_steps_from_root_core_exports(self) -> None:
         manifest_text = build_manifest(
@@ -459,6 +496,41 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
                 + self.script.GENERATED_HEADER
                 + "\n\nOriginal generated content\n",
             )
+
+    def test_agent_all_fails_before_any_agent_writes(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+            opencode_target = repo_root / ".opencode/commands/research.md"
+            opencode_target.parent.mkdir(parents=True, exist_ok=True)
+            opencode_target.write_text("manual\n", encoding="utf-8")
+
+            exit_code, _, stderr = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--agent",
+                    "all",
+                ]
+            )
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("refusing to overwrite without --force-overwrite-existing", stderr)
+            self.assertFalse((repo_root / ".claude/skills/research/SKILL.md").exists())
 
     def test_repository_generated_markdown_exports_are_in_sync(self) -> None:
         catalog = load_command_catalog(REPO_ROOT, REPO_ROOT / "framework/scripts/manifest.yaml")

@@ -72,6 +72,7 @@ Distributable script layer for consumer repositories.
 
 - `framework/scripts/ci/sync_adr_index.py`
   - Generates `docs/adr/index.json` and `docs/decisions.md` from ADR files.
+  - Accepts optional `--repo-root` to resolve ADR/document paths against an explicit repository root.
   - Requires ADR body metadata (`ADR ID`, `Title`, `Status`, `Date`, `Decision`, `References/Issue`).
   - Produces deterministic, idempotent output (stable sorting and normalized values).
 
@@ -125,7 +126,7 @@ Distributable script layer for consumer repositories.
   - Exit code: `0` (approved/consistent), `2` (failed/mismatch/invalid input).
 
 - `framework/scripts/gates/validate_pr_preconditions.py`
-  - Validates PR-open preconditions: scope lock + review evidence + commit/range consistency.
+  - Validates PR-open preconditions: scope lock + review evidence + final-review ancillary gates.
   - Required top-level inputs: `request_id`, `scope_id`, `run_id`, `artifact_path`, `expected`, `scope_lock`, `review_evidence`.
   - Exit code: `0` (all preconditions satisfied), `2` (missing/mismatch/invalid input).
 
@@ -136,6 +137,7 @@ Distributable script layer for consumer repositories.
 
 - `framework/scripts/gates/validate_adr_index.py`
   - Validates ADR index entry structure, duplicate `adr_id`, indexed ADR file existence, repository-bounded ADR paths, ADR body metadata consistency, and `docs/decisions.md` table consistency.
+  - Accepts optional `--repo-root` to resolve ADR/document paths against an explicit repository root.
   - Required top-level inputs: `request_id`, `scope_id`, `run_id`, `artifact_path`, `adr_index`.
   - Exit code: `0` (valid), `2` (invalid input/mismatch).
 

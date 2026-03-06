@@ -23,6 +23,7 @@ from framework.scripts.lib.exit_codes import (  # noqa: E402
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate ADR index and decisions table")
+    parser.add_argument("--repo-root", default=str(_REPO_ROOT))
     parser.add_argument("--adr-dir", default="docs/adr")
     parser.add_argument("--index-path", default="docs/adr/index.json")
     parser.add_argument("--decisions-path", default="docs/decisions.md")
@@ -43,7 +44,7 @@ def _require_repo_child(repo_root: Path, path: Path, label: str) -> Path:
 
 def main() -> int:
     args = _parse_args()
-    repo_root = Path(_REPO_ROOT).resolve()
+    repo_root = Path(args.repo_root).resolve()
 
     adr_dir_arg = Path(args.adr_dir)
     index_path_arg = Path(args.index_path)

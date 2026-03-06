@@ -6,7 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-REQUIRED_STAGE_KEYS = ("review_cycle", "final_review")
+REQUIRED_REVIEW_STAGE_KEYS = ("review_cycle", "final_review")
+REQUIRED_GATE_STAGE_KEYS = ("drift_detection", "adr_index")
 
 
 def _error(code: str, message: str) -> dict[str, Any]:
@@ -86,6 +87,22 @@ def _validate_stage(
     return result
 
 
+def _validate_gate_stage(
+    *,
+    stage_key: str,
+    stage_obj: dict[str, Any],
+    mismatch_reasons: list[str],
+) -> dict[str, str]:
+    stage_status = _require_text(stage_obj, "status", f"review_evidence.{stage_key}").lower()
+    stage_artifact = _require_text(stage_obj, "artifact_path", f"review_evidence.{stage_key}")
+    if stage_status != "pass":
+        mismatch_reasons.append(f"{stage_key}_not_passed")
+    return {
+        "status": stage_status,
+        "artifact_path": stage_artifact,
+    }
+
+
 def _scope_lock_mismatch_reasons(
     *,
     scope_lock_matched: bool,
@@ -135,7 +152,7 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     )
 
     stage_results: dict[str, dict[str, str]] = {}
-    for stage_key in REQUIRED_STAGE_KEYS:
+    for stage_key in REQUIRED_REVIEW_STAGE_KEYS:
         stage_obj = review_evidence.get(stage_key)
         if not isinstance(stage_obj, dict):
             mismatch_reasons.append(f"{stage_key}_missing")
@@ -145,6 +162,16 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
             stage_obj=stage_obj,
             expected_head=expected_head,
             expected_base=expected_base,
+            mismatch_reasons=mismatch_reasons,
+        )
+    for stage_key in REQUIRED_GATE_STAGE_KEYS:
+        stage_obj = review_evidence.get(stage_key)
+        if not isinstance(stage_obj, dict):
+            mismatch_reasons.append(f"{stage_key}_missing")
+            continue
+        stage_results[stage_key] = _validate_gate_stage(
+            stage_key=stage_key,
+            stage_obj=stage_obj,
             mismatch_reasons=mismatch_reasons,
         )
 

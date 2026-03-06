@@ -85,11 +85,13 @@ class ValidateAdrIndexTests(unittest.TestCase):
         payload: Mapping[str, object],
         *,
         cwd: Path | None = None,
+        repo_root: Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as tmp:
             input_path = Path(tmp) / "input.json"
             output_path = Path(tmp) / "output.json"
             input_path.write_text(json.dumps(payload), encoding="utf-8")
+            effective_repo_root = repo_root if repo_root is not None else (cwd or REPO_ROOT)
             return subprocess.run(
                 [
                     sys.executable,
@@ -98,6 +100,8 @@ class ValidateAdrIndexTests(unittest.TestCase):
                     str(input_path),
                     "--output",
                     str(output_path),
+                    "--repo-root",
+                    str(effective_repo_root),
                 ],
                 capture_output=True,
                 text=True,
@@ -167,7 +171,7 @@ class ValidateAdrIndexTests(unittest.TestCase):
                     ]
                 },
             }
-            result = self._run(payload, cwd=repo_root)
+            result = self._run(payload, cwd=repo_root, repo_root=repo_root)
             self.assertEqual(result.returncode, 0)
             body = json.loads(result.stdout)
             self.assertEqual(body["status"], "pass")
@@ -213,7 +217,7 @@ class ValidateAdrIndexTests(unittest.TestCase):
                     ]
                 },
             }
-            result = self._run(payload, cwd=repo_root)
+            result = self._run(payload, cwd=repo_root, repo_root=repo_root)
             self.assertEqual(result.returncode, 0)
             body = json.loads(result.stdout)
             self.assertEqual(body["status"], "pass")

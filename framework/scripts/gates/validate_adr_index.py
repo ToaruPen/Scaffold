@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 from pathlib import Path
@@ -24,7 +25,6 @@ from framework.scripts.lib.adr_markdown_helpers import (
 from framework.scripts.lib.exit_codes import EXIT_SUCCESS, EXIT_VALIDATION_FAILED
 from framework.scripts.lib.gate_helpers import (
     error_dict,
-    parse_gate_args,
     read_json,
     require_object,
     require_text,
@@ -34,6 +34,14 @@ from framework.scripts.lib.gate_helpers import (
 _DECISIONS_HEADER = ["ADR ID", "Title", "Decision Summary", "Issue", "ADR Path"]
 _DECISIONS_COLS = len(_DECISIONS_HEADER)
 _ADR_ID_FULL_RE = re.compile(r"^ADR-\d{3,}$")
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Validate adr-index-consistency contract")
+    parser.add_argument("--input", required=True, help="Path to input JSON")
+    parser.add_argument("--output", help="Path to write result JSON")
+    parser.add_argument("--repo-root", default=str(_REPO_ROOT))
+    return parser.parse_args()
 
 
 def _optional_list_of_texts(obj: dict[str, Any], key: str, parent: str = "") -> list[str] | None:
@@ -376,12 +384,13 @@ def _invalid_input_result(message: str) -> dict[str, Any]:
 
 
 def main() -> int:
-    args = parse_gate_args("Validate adr-index-consistency contract")
+    args = _parse_args()
     output_path = Path(args.output) if args.output else None
+    repo_root = Path(args.repo_root).resolve()
 
     try:
         payload = read_json(Path(args.input))
-        result, passed = _build_result(payload, Path.cwd())
+        result, passed = _build_result(payload, repo_root)
         exit_code = EXIT_SUCCESS if passed else EXIT_VALIDATION_FAILED
     except ValueError as exc:
         result = _invalid_input_result(str(exc))

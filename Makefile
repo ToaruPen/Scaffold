@@ -1,6 +1,7 @@
 .PHONY: install-dev lint lint-shell format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range command-surfaces command-surfaces-conditional agent-rules
 
-VENV_BIN ?= .venv/bin
+VENV_DIR ?= .venv
+VENV_BIN ?= $(VENV_DIR)/bin
 PYTHON ?= $(VENV_BIN)/python
 RUFF ?= $(VENV_BIN)/ruff
 MYPY ?= $(VENV_BIN)/mypy
@@ -12,14 +13,18 @@ SHELL_FILES = $(shell find framework -type f -name '*.sh' | sort)
 export PATH := $(abspath $(VENV_BIN)):$(PATH)
 
 install-dev:
-	@if [ ! -d .venv ]; then python3 -m venv .venv; fi
+	@if [ ! -d "$(VENV_DIR)" ]; then python3 -m venv "$(VENV_DIR)"; fi
 	$(PYTHON) -m pip install -r requirements-dev.txt
 
 lint:
 	$(RUFF) check framework tests
 
 lint-shell:
-	$(SHELLCHECK) $(SHELL_FILES)
+	@if [ -n "$(strip $(SHELL_FILES))" ]; then \
+		$(SHELLCHECK) $(SHELL_FILES); \
+	else \
+		echo "No shell files found under framework; skipping shellcheck."; \
+	fi
 
 format:
 	$(RUFF) format framework tests

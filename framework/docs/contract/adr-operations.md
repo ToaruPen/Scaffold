@@ -24,8 +24,8 @@ Define deterministic ADR maintenance rules for `docs/adr/index.json` and `docs/d
 ## Sync Procedure
 
 1. Update ADR body files.
-2. Run `python3 framework/scripts/ci/sync_adr_index.py`.
-3. Validate with `python3 framework/scripts/gates/validate_adr_index.py --input <input.json> --output <output.json>` through the normal final-review flow.
+2. Run `python3 framework/scripts/ci/sync_adr_index.py` (or pass `--repo-root <repo-root>` when invoking against an explicit repository root).
+3. Validate with `python3 framework/scripts/gates/validate_adr_index.py --input <input.json> --output <output.json>` (or add `--repo-root <repo-root>`) through the normal final-review flow.
 
 ## Supersede Rules
 

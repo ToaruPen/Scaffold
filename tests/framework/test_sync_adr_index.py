@@ -28,6 +28,8 @@ def _run_sync(
             [
                 sys.executable,
                 str(SCRIPT),
+                "--repo-root",
+                str(repo_root),
                 "--adr-dir",
                 str(adr_dir),
                 "--index-path",
@@ -134,7 +136,7 @@ class SyncAdrIndexTests(unittest.TestCase):
                 index_payload["entries"][0]["decision_summary"],
                 "Keep core commands explicit.",
             )
-            expected_file_path = adr_file.resolve().relative_to(REPO_ROOT.resolve()).as_posix()
+            expected_file_path = adr_file.resolve().relative_to(repo_root.resolve()).as_posix()
             self.assertEqual(
                 index_payload["entries"][0]["file_path"],
                 expected_file_path,

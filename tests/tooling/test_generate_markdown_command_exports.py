@@ -253,6 +253,8 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
                     str(repo_root),
                     "--manifest",
                     str(manifest_path),
+                    "--output-root",
+                    str(repo_root / "tooling/sync/generated/with-conditional/markdown"),
                     "--enable-conditional",
                     "--agent",
                     "opencode",
@@ -267,6 +269,47 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
                 / ".opencode/commands/waiver.md"
             )
             self.assertTrue(preview_path.exists())
+
+    def test_enable_conditional_writes_to_root_surfaces(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/create-pr",
+                    "tier": "core",
+                    "requires": ["pr-open-preconditions"],
+                    "next_steps": ["/pr-bots-review"],
+                },
+                {
+                    "id": "/pr-bots-review",
+                    "tier": "conditional",
+                    "requires": ["pr-bot-iteration"],
+                    "next_steps": ["/create-pr"],
+                },
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            exit_code, _, _ = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--agent",
+                    "all",
+                    "--enable-conditional",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((repo_root / ".opencode/commands/pr-bots-review.md").exists())
+            self.assertTrue((repo_root / ".claude/skills/pr-bots-review/SKILL.md").exists())
+            create_pr = (repo_root / ".opencode/commands/create-pr.md").read_text(encoding="utf-8")
+            self.assertIn("`/pr-bots-review`", create_pr)
 
     def test_output_root_preserves_unrelated_existing_files(self) -> None:
         manifest_text = build_manifest(
@@ -534,7 +577,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
 
     def test_repository_generated_markdown_exports_are_in_sync(self) -> None:
         catalog = load_command_catalog(REPO_ROOT, REPO_ROOT / "framework/scripts/manifest.yaml")
-        core_commands = [command for command in catalog["commands"] if command["tier"] == "core"]
+        active_commands = catalog["commands"]
         conditional_commands = catalog["commands"]
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -547,6 +590,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
                     str(output_root),
                     "--agent",
                     "all",
+                    "--enable-conditional",
                 ]
             )
             conditional_exit_code, _, _ = self._run_script(
@@ -562,7 +606,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
             self.assertEqual(conditional_exit_code, 0)
-            for command in core_commands:
+            for command in active_commands:
                 opencode_expected = (
                     output_root / "opencode/.opencode/commands" / f"{command['slug']}.md"
                 ).read_text(encoding="utf-8")

@@ -103,8 +103,7 @@ def _guard_overwrite(path: Path, *, force: bool) -> None:
 
 
 def _root_output_base(*, agent: str, repo_root: Path, include_conditional: bool) -> Path:
-    if include_conditional:
-        return repo_root / "tooling/sync/generated/with-conditional/markdown" / agent
+    del agent, include_conditional
     return repo_root
 
 

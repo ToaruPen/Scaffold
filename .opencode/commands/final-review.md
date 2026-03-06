@@ -20,6 +20,7 @@ After review-cycle passes and the branch is nearly ready to publish.
 
 ## Next Commands
 - `/create-pr`
+- `/waiver`
 
 ## Source Of Truth
 - `framework/scripts/manifest.yaml`

@@ -89,14 +89,15 @@ Default behavior:
 
 - write OpenCode command files to `.opencode/commands/*.md`
 - write Claude skills to `.claude/skills/*/SKILL.md`
-- include `core` tier commands only
+- this repository opts into the conditional markdown surface, so the standard
+  `make command-exports-markdown` target writes both `core` and `conditional`
+  commands to the active agent surfaces
 
 Conditional behavior:
 
-- keep root-level CLI-readable files aligned to the default `core` surface
 - write preview/reference exports to `tooling/sync/generated/with-conditional/markdown/`
-- filter `Next Commands` in root-level exports to commands that exist on the same
-  default surface
+- preserve `Next Commands` only when the referenced command exists on the same
+  generated surface
 
 Generated files are deterministic and refuse to overwrite manual files unless
 `--force-overwrite-existing` is passed.
@@ -123,6 +124,11 @@ The generated Markdown exports are concise contract cards, not long procedural
 manuals. Their role is to bridge each CLI's recognition format back to the same
 Scaffold contracts in `framework/scripts/manifest.yaml` and
 `framework/docs/contract/workflow-map.md`.
+
+For this repository, the committed root-level Markdown surfaces are the active
+conditional profile. The preview tree under
+`tooling/sync/generated/with-conditional/markdown/` remains available as a
+regeneration snapshot for drift checks.
 
 ## Drift Detection
 

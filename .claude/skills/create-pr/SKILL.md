@@ -19,6 +19,7 @@ When the branch is ready to publish for CI and external review.
 - `review-evidence-link` - Review evidence links to current commit/range
 
 ## Next Commands
+- `/pr-bots-review`
 
 ## Source Of Truth
 - `framework/scripts/manifest.yaml`

@@ -58,10 +58,10 @@ command-surfaces-conditional:
 	$(PYTHON) tooling/sync/generate_command_surfaces.py --output-root tooling/sync/generated/with-conditional --agent all --enable-conditional
 
 command-exports-markdown:
-	$(PYTHON) tooling/sync/generate_markdown_command_exports.py --agent all
+	$(PYTHON) tooling/sync/generate_markdown_command_exports.py --agent all --enable-conditional
 
 command-exports-markdown-conditional:
-	$(PYTHON) tooling/sync/generate_markdown_command_exports.py --agent all --enable-conditional
+	$(PYTHON) tooling/sync/generate_markdown_command_exports.py --agent all --enable-conditional --output-root tooling/sync/generated/with-conditional/markdown
 
 agent-rules:
 	$(PYTHON) tooling/sync/generate_agent_rules.py

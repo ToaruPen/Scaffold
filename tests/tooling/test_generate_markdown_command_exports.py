@@ -112,10 +112,50 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
             research_path = _active_opencode_path(repo_root, "research")
             self.assertTrue(research_path.exists())
             content = research_path.read_text(encoding="utf-8")
-            self.assertIn("description: Summary for /research", content)
+            self.assertIn('description: "Summary for /research"', content)
             self.assertIn("# /research", content)
             self.assertIn("`research-before-spec`", content)
             self.assertIn("- `manifest.yaml`", content)
+
+    def test_quotes_frontmatter_description_for_yaml_special_characters(self) -> None:
+        manifest_text = """\
+contracts:
+  - id: research-before-spec
+    description: research-before-spec description
+    validator: framework/scripts/gates/research-before-spec.py
+must_command_contracts:
+  /research:
+    requires:
+      - research-before-spec
+command_tiers:
+  /research: core
+command_metadata:
+  /research:
+    summary: "Hello: world"
+    when_to_use: When to use /research
+    next_steps:
+      - /research
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            exit_code, _, _ = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    str(manifest_path),
+                    "--agent",
+                    "opencode",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            content = _active_opencode_path(repo_root, "research").read_text(encoding="utf-8")
+            self.assertIn('description: "Hello: world"', content)
 
     def test_resolves_relative_repo_root_from_current_working_directory(self) -> None:
         manifest_text = build_manifest(
@@ -144,7 +184,7 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
                     "--repo-root",
                     "repo",
                     "--manifest",
-                    "manifest.yaml",
+                    "repo/manifest.yaml",
                     "--agent",
                     "opencode",
                 ]
@@ -152,6 +192,43 @@ class GenerateMarkdownCommandExportsTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
             self.assertTrue(_active_opencode_path(repo_root, "research").exists())
+
+    def test_resolves_relative_manifest_from_current_working_directory(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            repo_root = tmp_path / "repo"
+            repo_root.mkdir()
+            manifest_path = tmp_path / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            old_cwd = Path.cwd()
+            self.addCleanup(os.chdir, old_cwd)
+            os.chdir(tmp_path)
+            exit_code, _, _ = self._run_script(
+                [
+                    "generate_markdown_command_exports.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--manifest",
+                    "manifest.yaml",
+                    "--agent",
+                    "opencode",
+                ]
+            )
+
+            self.assertEqual(exit_code, 0)
+            content = _active_opencode_path(repo_root, "research").read_text(encoding="utf-8")
+            self.assertIn("- `manifest.yaml`", content)
 
     def test_filters_conditional_next_steps_from_root_core_exports(self) -> None:
         manifest_text = build_manifest(

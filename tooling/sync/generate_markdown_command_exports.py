@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -157,9 +158,10 @@ def _target_path(*, agent: str, base_root: Path, slug: str) -> Path:
 
 
 def _render_opencode(command: dict[str, Any], manifest_path: str) -> str:
+    description = json.dumps(command["summary"], ensure_ascii=True)
     lines = [
         "---",
-        f"description: {command['summary']}",
+        f"description: {description}",
         "---",
         "",
         GENERATED_HEADER,
@@ -389,6 +391,7 @@ def _apply_agent_output_plan(
 
 def main() -> int:
     args = _parse_args()
+    runtime_root = Path.cwd()
     repo_root = _resolve_repo_root(args.repo_root)
     output_root = Path(args.output_root) if args.output_root else None
 
@@ -403,7 +406,7 @@ def main() -> int:
             )
         if args.sync_preview_snapshot and not args.enable_conditional:
             raise CommandSurfaceLoadError("--sync-preview-snapshot requires --enable-conditional")
-        catalog = load_command_catalog(repo_root, args.manifest)
+        catalog = load_command_catalog(runtime_root, args.manifest)
         commands = _filter_commands_for_surface(
             catalog["commands"], include_conditional=args.enable_conditional
         )

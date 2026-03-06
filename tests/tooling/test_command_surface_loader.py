@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 from tooling.sync.lib.command_surface_loader import (
     CommandSurfaceLoadError,
@@ -21,7 +22,7 @@ def _load_manifest_builder() -> Callable[..., str]:
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.build_manifest
+    return cast(Callable[..., str], module.build_manifest)
 
 
 build_manifest: Callable[..., str] = _load_manifest_builder()

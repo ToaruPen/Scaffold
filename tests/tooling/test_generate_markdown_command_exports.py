@@ -10,6 +10,7 @@ import unittest
 from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
+from typing import cast
 from unittest.mock import patch
 
 from tooling.sync.lib.command_surface_loader import load_command_catalog
@@ -37,7 +38,7 @@ def _load_manifest_builder() -> Callable[..., str]:
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.build_manifest
+    return cast(Callable[..., str], module.build_manifest)
 
 
 build_manifest: Callable[..., str] = _load_manifest_builder()

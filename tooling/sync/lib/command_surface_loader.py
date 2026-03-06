@@ -137,7 +137,7 @@ def load_command_catalog(
             raise CommandSurfaceLoadError(f"command_metadata contains unknown commands: {details}")
 
     commands: list[dict[str, Any]] = []
-    tiers = {"core": [], "conditional": []}
+    tiers: dict[str, list[str]] = {"core": [], "conditional": []}
 
     for command_id in command_ids:
         metadata_entry = command_metadata.get(command_id, {})

@@ -75,7 +75,8 @@ the same `framework/scripts/manifest.yaml` source of truth.
 Run manually:
 
 ```bash
-python3 tooling/sync/generate_markdown_command_exports.py --agent all
+python3 tooling/sync/generate_markdown_command_exports.py --agent all --enable-conditional --write-active-surfaces
+python3 tooling/sync/generate_markdown_command_exports.py --agent all --enable-conditional
 ```
 
 Or via Make targets:

@@ -44,6 +44,7 @@ Distributable script layer for consumer repositories.
 
 - `framework/scripts/ci/run_review_engine.py`
   - Runs `codex` or `claude` in read-only review mode.
+  - Requires a clean working tree so review evidence stays linked to commit/range.
   - Creates artifacts under `.scaffold/review_results/<scope_id>/<run_id>/review-cycle/`.
   - Separates final outputs from intermediate files:
     - `outputs/review.json`

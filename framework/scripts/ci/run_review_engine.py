@@ -81,6 +81,29 @@ class ReviewContext:
     engine: str
 
 
+@dataclass(frozen=True)
+class RunPaths:
+    run_dir: Path
+    output_dir: Path
+    intermediate_dir: Path
+    review_json_path: Path
+    prompt_path: Path
+    raw_output_path: Path
+    review_cycle_input: Path
+    review_cycle_result: Path
+    review_evidence_input: Path
+    review_evidence_result: Path
+
+
+@dataclass(frozen=True)
+class RunResultState:
+    cycle_exit: int
+    evidence_exit: int
+    status: str | None = None
+    error: str | None = None
+    trace: str | None = None
+
+
 def _stream_to_text(value: object) -> str:
     if isinstance(value, str):
         return value
@@ -109,6 +132,106 @@ def _git_short_sha(repo_root: Path, ref: str) -> str | None:
         return None
     value = result.stdout.strip()
     return value or None
+
+
+def _git_has_worktree_changes(repo_root: Path) -> bool:
+    result = _run_command(
+        ["git", "status", "--short"],
+        cwd=repo_root,
+        timeout_sec=30,
+    )
+    if result.returncode != 0:
+        raise ValueError("failed to inspect working tree status")
+    return bool(result.stdout.strip())
+
+
+def _resolve_review_range(repo_root: Path, base_ref: str) -> tuple[str, str]:
+    head_sha = _git_short_sha(repo_root, "HEAD")
+    if head_sha is None:
+        raise ValueError(
+            "failed to resolve HEAD sha; create an initial commit before running review"
+        )
+
+    base_sha = _git_short_sha(repo_root, base_ref)
+    if base_sha is None:
+        raise ValueError(f"failed to resolve base ref sha: {base_ref}")
+
+    if _git_has_worktree_changes(repo_root):
+        raise ValueError(
+            "review-cycle requires a clean working tree; "
+            "commit or stash changes before running review"
+        )
+    return head_sha, base_sha
+
+
+def _build_run_paths(repo_root: Path, config: RunnerConfig) -> RunPaths:
+    run_dir = repo_root / config.results_dir / config.scope_id / config.run_id / "review-cycle"
+    output_dir = run_dir / "outputs"
+    intermediate_dir = run_dir / "intermediate"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    intermediate_dir.mkdir(parents=True, exist_ok=True)
+    return RunPaths(
+        run_dir=run_dir,
+        output_dir=output_dir,
+        intermediate_dir=intermediate_dir,
+        review_json_path=output_dir / "review.json",
+        prompt_path=intermediate_dir / "prompt.txt",
+        raw_output_path=intermediate_dir / "raw-output.txt",
+        review_cycle_input=intermediate_dir / "review-cycle.input.json",
+        review_cycle_result=output_dir / "review-cycle.result.json",
+        review_evidence_input=intermediate_dir / "review-evidence.input.json",
+        review_evidence_result=output_dir / "review-evidence.result.json",
+    )
+
+
+def _build_metadata(
+    *,
+    config: RunnerConfig,
+    repo_root: Path,
+    context: ReviewContext,
+    paths: RunPaths,
+    result_state: RunResultState,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "engine": config.engine,
+        "scope_id": config.scope_id,
+        "run_id": config.run_id,
+        "request_id": context.request_id,
+        "head_sha": context.head_sha,
+        "base_ref": config.base_ref,
+        "base_sha": context.base_sha,
+        "run_dir": _relative_path(repo_root, paths.run_dir),
+        "output_dir": _relative_path(repo_root, paths.output_dir),
+        "intermediate_dir": _relative_path(repo_root, paths.intermediate_dir),
+        "review_json": context.artifact_path,
+        "review_cycle_result": _relative_path(repo_root, paths.review_cycle_result),
+        "review_evidence_result": _relative_path(repo_root, paths.review_evidence_result),
+        "review_cycle_input": _relative_path(repo_root, paths.review_cycle_input),
+        "review_evidence_input": _relative_path(repo_root, paths.review_evidence_input),
+        "raw_output": _relative_path(repo_root, paths.raw_output_path),
+        "prompt": _relative_path(repo_root, paths.prompt_path),
+        "review_cycle_exit_code": result_state.cycle_exit,
+        "review_evidence_exit_code": result_state.evidence_exit,
+        "configured_model": (
+            config.codex_model if config.engine == "codex" else config.claude_model
+        ),
+        "configured_effort": (
+            config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
+        ),
+        **_build_optional_metadata(config, repo_root),
+        "entrypoints": {
+            "primary_review": context.artifact_path,
+            "review_cycle_gate_result": _relative_path(repo_root, paths.review_cycle_result),
+            "review_evidence_gate_result": _relative_path(repo_root, paths.review_evidence_result),
+        },
+    }
+    if result_state.status is not None:
+        metadata["status"] = result_state.status
+    if result_state.error is not None:
+        metadata["error"] = result_state.error
+    if result_state.trace is not None:
+        metadata["traceback"] = result_state.trace
+    return metadata
 
 
 def _load_prompt_template(path: Path) -> tuple[list[str], list[str]]:
@@ -157,7 +280,7 @@ def _render_prompt(
             f"- scope_id: {context.scope_id}",
             f"- run_id: {context.run_id}",
             f"- base_ref: {context.base_ref}",
-            "- compare target: current branch/worktree changes against base_ref",
+            "- compare target: current committed branch changes against base_ref",
             "",
             "Required fixed output values:",
             f"- request_id: {context.request_id}",
@@ -491,29 +614,15 @@ def _parse_args() -> RunnerConfig:
 def main() -> int:
     config = _parse_args()
     repo_root = Path.cwd()
-    stage = "review-cycle"
-
-    head_sha = _git_short_sha(repo_root, "HEAD")
-    if head_sha is None:
-        print(
-            "failed to resolve HEAD sha; create an initial commit before running review",
-            file=sys.stderr,
-        )
-        return 2
-    base_sha = _git_short_sha(repo_root, config.base_ref)
-    if base_sha is None:
-        print(f"failed to resolve base ref sha: {config.base_ref}", file=sys.stderr)
+    try:
+        head_sha, base_sha = _resolve_review_range(repo_root, config.base_ref)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
         return 2
 
     request_id = f"req-{config.engine}-{config.run_id}"
-    run_dir = repo_root / config.results_dir / config.scope_id / config.run_id / stage
-    output_dir = run_dir / "outputs"
-    intermediate_dir = run_dir / "intermediate"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    intermediate_dir.mkdir(parents=True, exist_ok=True)
-
-    review_json_path = output_dir / "review.json"
-    artifact_path = _relative_path(repo_root, review_json_path)
+    paths = _build_run_paths(repo_root, config)
+    artifact_path = _relative_path(repo_root, paths.review_json_path)
     context = ReviewContext(
         request_id=request_id,
         scope_id=config.scope_id,
@@ -525,13 +634,6 @@ def main() -> int:
         engine=config.engine,
     )
 
-    prompt_path = intermediate_dir / "prompt.txt"
-    raw_output_path = intermediate_dir / "raw-output.txt"
-    review_cycle_input = intermediate_dir / "review-cycle.input.json"
-    review_cycle_result = output_dir / "review-cycle.result.json"
-    review_evidence_input = intermediate_dir / "review-evidence.input.json"
-    review_evidence_result = output_dir / "review-evidence.result.json"
-
     try:
         instructions, focus_paths = _load_prompt_template(repo_root / config.prompt_template)
         prompt_text = _render_prompt(
@@ -539,13 +641,13 @@ def main() -> int:
             focus_paths=focus_paths,
             context=context,
         )
-        prompt_path.write_text(prompt_text, encoding="utf-8")
+        paths.prompt_path.write_text(prompt_text, encoding="utf-8")
 
         raw_text = _run_engine(
             config=config,
             repo_root=repo_root,
             prompt_text=prompt_text,
-            raw_output_path=raw_output_path,
+            raw_output_path=paths.raw_output_path,
         )
 
         extracted = _extract_review_json(raw_text)
@@ -553,13 +655,13 @@ def main() -> int:
             payload=extracted,
             context=context,
         )
-        _write_json(review_json_path, normalized)
+        _write_json(paths.review_json_path, normalized)
 
-        _validate_schema(repo_root, repo_root / config.canonical_schema, review_json_path)
+        _validate_schema(repo_root, repo_root / config.canonical_schema, paths.review_json_path)
 
         review_cycle_artifact = context.artifact_path
         _write_json(
-            review_cycle_input,
+            paths.review_cycle_input,
             _build_gate_input(
                 artifact_path=review_cycle_artifact,
                 review_payload=normalized,
@@ -569,13 +671,13 @@ def main() -> int:
         cycle_exit = _run_gate(
             repo_root=repo_root,
             gate_script=repo_root / "framework/scripts/gates/validate_review_cycle.py",
-            input_path=review_cycle_input,
-            output_path=review_cycle_result,
+            input_path=paths.review_cycle_input,
+            output_path=paths.review_cycle_result,
         )
 
-        review_evidence_artifact = _relative_path(repo_root, review_evidence_result)
+        review_evidence_artifact = _relative_path(repo_root, paths.review_evidence_result)
         _write_json(
-            review_evidence_input,
+            paths.review_evidence_input,
             _build_gate_input(
                 artifact_path=review_evidence_artifact,
                 review_payload=normalized,
@@ -585,91 +687,41 @@ def main() -> int:
         evidence_exit = _run_gate(
             repo_root=repo_root,
             gate_script=repo_root / "framework/scripts/gates/validate_review_evidence.py",
-            input_path=review_evidence_input,
-            output_path=review_evidence_result,
+            input_path=paths.review_evidence_input,
+            output_path=paths.review_evidence_result,
             policy_path=repo_root / config.policy_path,
         )
 
-        metadata = {
-            "engine": config.engine,
-            "scope_id": config.scope_id,
-            "run_id": config.run_id,
-            "request_id": request_id,
-            "head_sha": head_sha,
-            "base_ref": config.base_ref,
-            "base_sha": base_sha,
-            "run_dir": _relative_path(repo_root, run_dir),
-            "output_dir": _relative_path(repo_root, output_dir),
-            "intermediate_dir": _relative_path(repo_root, intermediate_dir),
-            "review_json": artifact_path,
-            "review_cycle_result": _relative_path(repo_root, review_cycle_result),
-            "review_evidence_result": _relative_path(repo_root, review_evidence_result),
-            "review_cycle_input": _relative_path(repo_root, review_cycle_input),
-            "review_evidence_input": _relative_path(repo_root, review_evidence_input),
-            "raw_output": _relative_path(repo_root, raw_output_path),
-            "prompt": _relative_path(repo_root, prompt_path),
-            "review_cycle_exit_code": cycle_exit,
-            "review_evidence_exit_code": evidence_exit,
-            "configured_model": (
-                config.codex_model if config.engine == "codex" else config.claude_model
-            ),
-            "configured_effort": (
-                config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
-            ),
-            **_build_optional_metadata(config, repo_root),
-            "entrypoints": {
-                "primary_review": _relative_path(repo_root, review_json_path),
-                "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),
-                "review_evidence_gate_result": _relative_path(repo_root, review_evidence_result),
-            },
-        }
-        _write_json(output_dir / "index.json", metadata)
-        _write_json(output_dir / "run-metadata.json", metadata)
+        metadata = _build_metadata(
+            config=config,
+            repo_root=repo_root,
+            context=context,
+            paths=paths,
+            result_state=RunResultState(cycle_exit=cycle_exit, evidence_exit=evidence_exit),
+        )
+        _write_json(paths.output_dir / "index.json", metadata)
+        _write_json(paths.output_dir / "run-metadata.json", metadata)
 
         print(json.dumps(metadata, ensure_ascii=True, indent=2, sort_keys=True))
-        if cycle_exit == 0 and evidence_exit == 0:
-            return 0
-        return 2
+        exit_code = 0 if cycle_exit == 0 and evidence_exit == 0 else 2
+        return exit_code
     except Exception as exc:
         traceback.print_exc()
-        failure_metadata = {
-            "engine": config.engine,
-            "scope_id": config.scope_id,
-            "run_id": config.run_id,
-            "request_id": request_id,
-            "head_sha": head_sha,
-            "base_ref": config.base_ref,
-            "base_sha": base_sha,
-            "run_dir": _relative_path(repo_root, run_dir),
-            "output_dir": _relative_path(repo_root, output_dir),
-            "intermediate_dir": _relative_path(repo_root, intermediate_dir),
-            "review_json": artifact_path,
-            "review_cycle_result": _relative_path(repo_root, review_cycle_result),
-            "review_evidence_result": _relative_path(repo_root, review_evidence_result),
-            "review_cycle_input": _relative_path(repo_root, review_cycle_input),
-            "review_evidence_input": _relative_path(repo_root, review_evidence_input),
-            "raw_output": _relative_path(repo_root, raw_output_path),
-            "prompt": _relative_path(repo_root, prompt_path),
-            "review_cycle_exit_code": 2,
-            "review_evidence_exit_code": 2,
-            "status": "error",
-            "error": str(exc),
-            "traceback": traceback.format_exc(),
-            "configured_model": (
-                config.codex_model if config.engine == "codex" else config.claude_model
+        failure_metadata = _build_metadata(
+            config=config,
+            repo_root=repo_root,
+            context=context,
+            paths=paths,
+            result_state=RunResultState(
+                cycle_exit=2,
+                evidence_exit=2,
+                status="error",
+                error=str(exc),
+                trace=traceback.format_exc(),
             ),
-            "configured_effort": (
-                config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
-            ),
-            **_build_optional_metadata(config, repo_root),
-            "entrypoints": {
-                "primary_review": _relative_path(repo_root, review_json_path),
-                "review_cycle_gate_result": _relative_path(repo_root, review_cycle_result),
-                "review_evidence_gate_result": _relative_path(repo_root, review_evidence_result),
-            },
-        }
-        _write_json(output_dir / "index.json", failure_metadata)
-        _write_json(output_dir / "run-metadata.json", failure_metadata)
+        )
+        _write_json(paths.output_dir / "index.json", failure_metadata)
+        _write_json(paths.output_dir / "run-metadata.json", failure_metadata)
         print(json.dumps(failure_metadata, ensure_ascii=True, indent=2, sort_keys=True))
         return 2
 

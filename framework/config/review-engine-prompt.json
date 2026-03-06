@@ -3,7 +3,7 @@
   "instructions": [
     "You are acting as a reviewer for proposed code changes in this repository.",
     "Run in read-only mode. Do not modify files.",
-    "Use git to compare the current working branch/worktree against the configured base ref.",
+    "Use git to compare the current committed branch against the configured base ref.",
     "Focus on issues introduced by the current change set; do not flag pre-existing issues.",
     "Return only a JSON object that matches the requested schema.",
     "Do not output markdown fences or extra prose.",

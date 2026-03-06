@@ -10,6 +10,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "framework/scripts/gates/validate_adr_index.py"
+TEST_TIMEOUT = 30
 
 
 def _write_adr(
@@ -92,22 +93,30 @@ class ValidateAdrIndexTests(unittest.TestCase):
             output_path = Path(tmp) / "output.json"
             input_path.write_text(json.dumps(payload), encoding="utf-8")
             effective_repo_root = repo_root if repo_root is not None else (cwd or REPO_ROOT)
-            return subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPT),
-                    "--input",
-                    str(input_path),
-                    "--output",
-                    str(output_path),
-                    "--repo-root",
-                    str(effective_repo_root),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-                cwd=str(cwd) if cwd is not None else None,
-            )
+            try:
+                return subprocess.run(
+                    [
+                        sys.executable,
+                        str(SCRIPT),
+                        "--input",
+                        str(input_path),
+                        "--output",
+                        str(output_path),
+                        "--repo-root",
+                        str(effective_repo_root),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    cwd=str(cwd) if cwd is not None else None,
+                    timeout=TEST_TIMEOUT,
+                )
+            except subprocess.TimeoutExpired as exc:
+                stdout = exc.stdout if isinstance(exc.stdout, str) else ""
+                stderr = exc.stderr if isinstance(exc.stderr, str) else ""
+                raise AssertionError(
+                    f"validate_adr_index timed out; stdout={stdout!r} stderr={stderr!r}"
+                ) from exc
 
     def test_passes_with_unique_entries(self) -> None:
         with tempfile.TemporaryDirectory() as repo_tmp:

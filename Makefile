@@ -1,4 +1,4 @@
-.PHONY: install-dev lint lint-shell format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range command-surfaces command-surfaces-conditional agent-rules
+.PHONY: all clean install-dev lint lint-shell format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range command-surfaces command-surfaces-conditional agent-rules
 
 VENV_DIR ?= .venv
 VENV_BIN ?= $(VENV_DIR)/bin
@@ -11,6 +11,13 @@ SHELLCHECK ?= $(VENV_BIN)/shellcheck
 SHELL_FILES = $(shell find framework -type f -name '*.sh' | sort)
 
 export PATH := $(abspath $(VENV_BIN)):$(PATH)
+
+all: verify
+
+clean:
+	rm -rf build dist .mypy_cache .pytest_cache .ruff_cache .coverage .scaffold/review_results
+	find . -type d -name '__pycache__' -prune -exec rm -rf {} +
+	find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 
 install-dev:
 	@if [ ! -d "$(VENV_DIR)" ]; then python3 -m venv "$(VENV_DIR)"; fi

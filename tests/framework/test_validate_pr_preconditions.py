@@ -147,6 +147,14 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
                     "head_sha": "abcdef1",
                     "artifact_path": "y",
                 },
+                "drift_detection": {
+                    "status": "pass",
+                    "artifact_path": "drift",
+                },
+                "adr_index": {
+                    "status": "pass",
+                    "artifact_path": "adr",
+                },
             },
         }
 
@@ -176,7 +184,7 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
                     "artifact_path": "z",
                 },
                 "drift_detection": {
-                    "status": "fail",
+                    "status": "blocked",
                     "artifact_path": "drift",
                 },
             },
@@ -188,6 +196,7 @@ class ValidatePrPreconditionsTests(unittest.TestCase):
         self.assertEqual(body["status"], "fail")
         self.assertIn("drift_detection_not_passed", body["mismatch_reasons"])
         self.assertIn("adr_index_missing", body["mismatch_reasons"])
+        self.assertEqual(body["review_evidence"]["drift_detection"]["status"], "fail")
 
     def test_returns_invalid_input_when_expected_missing(self) -> None:
         payload = {

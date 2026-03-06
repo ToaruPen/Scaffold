@@ -93,7 +93,8 @@ def _validate_gate_stage(
     stage_obj: dict[str, Any],
     mismatch_reasons: list[str],
 ) -> dict[str, str]:
-    stage_status = _require_text(stage_obj, "status", f"review_evidence.{stage_key}").lower()
+    raw_stage_status = _require_text(stage_obj, "status", f"review_evidence.{stage_key}").lower()
+    stage_status = "pass" if raw_stage_status == "pass" else "fail"
     stage_artifact = _require_text(stage_obj, "artifact_path", f"review_evidence.{stage_key}")
     if stage_status != "pass":
         mismatch_reasons.append(f"{stage_key}_not_passed")

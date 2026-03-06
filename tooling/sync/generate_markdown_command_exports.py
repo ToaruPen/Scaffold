@@ -421,6 +421,7 @@ def main() -> int:
             catalog["commands"], include_conditional=args.enable_conditional
         )
         planned_outputs: list[tuple[Path, list[tuple[Path, str]], list[Path]]] = []
+        preview_outputs: list[tuple[Path, list[tuple[Path, str]], list[Path]]] = []
 
         if output_root is not None:
             root_base = _resolve_output_root(repo_root, output_root)
@@ -479,8 +480,8 @@ def main() -> int:
                     include_conditional=True,
                     force=args.force_overwrite_existing,
                 )
-                planned_outputs.append((preview_agent_root, rendered_outputs, stale_paths))
-        for agent_root, rendered_outputs, stale_paths in planned_outputs:
+                preview_outputs.append((preview_agent_root, rendered_outputs, stale_paths))
+        for agent_root, rendered_outputs, stale_paths in [*preview_outputs, *planned_outputs]:
             paths = _apply_agent_output_plan(
                 rendered_outputs=rendered_outputs,
                 stale_paths=stale_paths,

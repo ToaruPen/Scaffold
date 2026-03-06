@@ -13,7 +13,7 @@ from types import ModuleType
 from typing import cast
 from unittest.mock import patch
 
-from tooling.sync.lib.command_surface_loader import load_command_catalog
+from tooling.sync.lib.command_surface_loader import CommandSurfaceLoadError, load_command_catalog
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "tooling/sync/generate_markdown_command_exports.py"
@@ -997,6 +997,70 @@ command_metadata:
 
             self.assertEqual(exit_code, 2)
             self.assertIn("is stale but not generated", stderr)
+            self.assertFalse(_active_opencode_path(repo_root, "research").exists())
+
+    def test_sync_preview_snapshot_applies_preview_before_live_outputs(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                },
+                {
+                    "id": "/waiver",
+                    "tier": "conditional",
+                    "requires": ["waiver-exception"],
+                    "next_steps": ["/research"],
+                },
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            original_apply = self.script._apply_agent_output_plan
+
+            def fail_preview_first(
+                *,
+                rendered_outputs: list[tuple[Path, str]],
+                stale_paths: list[Path],
+                output_base: Path,
+            ) -> list[Path]:
+                del rendered_outputs, stale_paths
+                if "tooling/sync/generated/with-conditional/markdown" in str(output_base):
+                    raise CommandSurfaceLoadError("preview write failed")
+                return cast(
+                    list[Path],
+                    original_apply(
+                        rendered_outputs=[],
+                        stale_paths=[],
+                        output_base=output_base,
+                    ),
+                )
+
+            with patch.object(
+                self.script, "_apply_agent_output_plan", side_effect=fail_preview_first
+            ):
+                exit_code, _, stderr = self._run_script(
+                    [
+                        "generate_markdown_command_exports.py",
+                        "--repo-root",
+                        str(repo_root),
+                        "--manifest",
+                        str(manifest_path),
+                        "--agent",
+                        "all",
+                        "--enable-conditional",
+                        "--write-active-surfaces",
+                        "--sync-preview-snapshot",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("preview write failed", stderr)
             self.assertFalse(_active_opencode_path(repo_root, "research").exists())
 
 

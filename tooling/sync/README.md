@@ -67,6 +67,71 @@ Output profiles:
 When `--output-root` is omitted, the script chooses the profile directory
 automatically (`default` without `--enable-conditional`, `with-conditional` with it).
 
+## Markdown Command Export Sync
+
+Use the Markdown export generator to produce CLI-readable command definitions from
+the same `framework/scripts/manifest.yaml` source of truth.
+
+Run manually:
+
+```bash
+python3 tooling/sync/generate_markdown_command_exports.py --agent all
+```
+
+Or via Make targets:
+
+```bash
+make command-exports-markdown
+make command-exports-markdown-conditional
+```
+
+Default behavior:
+
+- write OpenCode command files to `.opencode/commands/*.md`
+- write Claude skills to `.claude/skills/*/SKILL.md`
+- include `core` tier commands only
+
+Conditional behavior:
+
+- keep root-level CLI-readable files aligned to the default `core` surface
+- write preview/reference exports to `tooling/sync/generated/with-conditional/markdown/`
+- filter `Next Commands` in root-level exports to commands that exist on the same
+  default surface
+
+Generated files are deterministic and refuse to overwrite manual files unless
+`--force-overwrite-existing` is passed.
+
+When using `--output-root`, point it at a dedicated preview directory only. The
+generator writes beneath that root and only manages its own generated command /
+skill paths. It refuses to target the repository root, its parent, or the
+filesystem root.
+
+## Recognition Matrix And Precedence
+
+- `Codex`
+  - command execution surface is built-in to Codex CLI
+  - repository-specific behavior comes from `AGENTS.md` and generated append files
+  - Scaffold does not generate Codex command markdown files
+- `Claude Code`
+  - Scaffold exports command-aligned guidance as `.claude/skills/*/SKILL.md`
+  - repository memory and standing instructions come from `CLAUDE.md`
+- `OpenCode`
+  - Scaffold exports command files to `.opencode/commands/*.md`
+  - repository instruction precedence is `AGENTS.md` first, `CLAUDE.md` fallback compatible
+
+The generated Markdown exports are concise contract cards, not long procedural
+manuals. Their role is to bridge each CLI's recognition format back to the same
+Scaffold contracts in `framework/scripts/manifest.yaml` and
+`framework/docs/contract/workflow-map.md`.
+
+## Drift Detection
+
+Generated JSON surfaces, generated append files, and generated Markdown command
+exports are all covered by repository sync tests under `tests/tooling/`.
+`make verify` runs those tests, and `.github/workflows/quality.yml` runs
+`make verify` in CI. If a committed generated file drifts from the source
+manifest or canonical rule sources, CI fails until the files are regenerated.
+
 ## Agent Rule Sync
 
 Generate agent-specific append files from canonical rule sources.

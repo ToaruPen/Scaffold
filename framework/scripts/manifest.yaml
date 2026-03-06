@@ -176,6 +176,90 @@ command_tiers:
   /pr-bots-review: conditional
   /waiver: conditional
 
+command_metadata:
+  /research:
+    summary: Create or verify research evidence before PRD or Epic authoring.
+    when_to_use: Requirement phase before defining specs or implementation issues.
+    next_steps:
+      - /create-prd
+      - /create-epic
+
+  /create-prd:
+    summary: Draft a PRD with measurable acceptance criteria and out-of-scope boundaries.
+    when_to_use: After research evidence exists and the problem needs product-level scope.
+    next_steps:
+      - /create-epic
+
+  /create-epic:
+    summary: Turn a PRD into an implementation-ready Epic and issue split.
+    when_to_use: After the PRD is stable enough to define engineering work.
+    next_steps:
+      - /create-issues
+
+  /create-issues:
+    summary: Split an Epic into implementation issues with declared change targets.
+    when_to_use: When the Epic is ready to become concrete work items.
+    next_steps:
+      - /worktree
+
+  /estimation:
+    summary: Record an approved estimate and select the implementation mode.
+    when_to_use: Planning phase after the issue scope and worktree are fixed.
+    next_steps:
+      - /impl
+      - /tdd
+
+  /impl:
+    summary: Implement the scoped issue after estimate approval and mode selection.
+    when_to_use: Delivery phase when the issue should be solved without a TDD-first loop.
+    next_steps:
+      - /review-cycle
+
+  /tdd:
+    summary: Implement the scoped issue through a red-green-refactor loop.
+    when_to_use: Delivery phase when tests should drive the implementation loop.
+    next_steps:
+      - /review-cycle
+
+  /worktree:
+    summary: Create or inspect an issue worktree and verify scope-lock and overlap safety.
+    when_to_use: Before parallel implementation starts for an issue-scoped branch.
+    next_steps:
+      - /estimation
+
+  /review-cycle:
+    summary: Run the local review loop and refresh review evidence for the current diff.
+    when_to_use: After implementation changes are ready for structured review feedback.
+    next_steps:
+      - /final-review
+
+  /final-review:
+    summary: Validate final review consistency, drift detection, and ADR linkage before opening a PR.
+    when_to_use: After review-cycle passes and the branch is nearly ready to publish.
+    next_steps:
+      - /create-pr
+      - /waiver
+
+  /create-pr:
+    summary: Open or update a PR after scope lock and review evidence are current.
+    when_to_use: When the branch is ready to publish for CI and external review.
+    next_steps:
+      - /pr-bots-review
+
+  /pr-bots-review:
+    summary: Iterate on bot feedback until the published PR is ready for human review.
+    when_to_use: After a PR exists and automated review bots can inspect the diff.
+    next_steps:
+      - /review-cycle
+      - /final-review
+
+  /waiver:
+    summary: Record an explicit exception when a gate cannot be satisfied normally.
+    when_to_use: Only when a documented exception is needed to keep the flow auditable.
+    next_steps:
+      - /final-review
+      - /create-pr
+
 adapter_interfaces:
   review_engine:
     contract_doc: framework/docs/contract/adapter-interfaces.md#review-engine-adapter

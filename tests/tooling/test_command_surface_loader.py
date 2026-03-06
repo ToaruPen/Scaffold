@@ -1,0 +1,149 @@
+from __future__ import annotations
+
+import importlib.util
+import tempfile
+import unittest
+from collections.abc import Callable
+from pathlib import Path
+
+from tooling.sync.lib.command_surface_loader import (
+    CommandSurfaceLoadError,
+    load_command_catalog,
+)
+
+FIXTURE_BUILDER_PATH = Path(__file__).resolve().parent / "manifest_fixture_builder.py"
+
+
+def _load_manifest_builder() -> Callable[..., str]:
+    spec = importlib.util.spec_from_file_location(
+        "manifest_fixture_builder_module", FIXTURE_BUILDER_PATH
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.build_manifest
+
+
+build_manifest: Callable[..., str] = _load_manifest_builder()
+
+
+class CommandSurfaceLoaderTests(unittest.TestCase):
+    def test_loads_catalog_with_required_contract_details(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/create-prd"],
+                },
+                {
+                    "id": "/create-prd",
+                    "tier": "core",
+                    "requires": ["spec-quality-minimum"],
+                    "next_steps": ["/research"],
+                },
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            catalog = load_command_catalog(repo_root, manifest_path)
+
+            self.assertEqual(catalog["tiers"]["core"], ["/create-prd", "/research"])
+            self.assertEqual(catalog["tiers"]["conditional"], [])
+            research = next(
+                command for command in catalog["commands"] if command["id"] == "/research"
+            )
+            self.assertEqual(catalog["manifest_path"], "manifest.yaml")
+            self.assertEqual(research["slug"], "research")
+            self.assertEqual(research["required_contracts"][0]["id"], "research-before-spec")
+
+    def test_normalizes_external_manifest_path_to_filename(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_root = Path(tmp)
+            repo_root = temp_root / "repo"
+            repo_root.mkdir()
+            manifest_path = temp_root / "outside.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            catalog = load_command_catalog(repo_root, manifest_path)
+
+            self.assertEqual(catalog["manifest_path"], "outside.yaml")
+
+    def test_fails_when_command_metadata_entry_is_missing(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ],
+            include_metadata=False,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                CommandSurfaceLoadError, "command_metadata must be a mapping"
+            ):
+                load_command_catalog(repo_root, manifest_path)
+
+    def test_fails_when_next_step_references_unknown_command(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/missing"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            with self.assertRaisesRegex(CommandSurfaceLoadError, "unknown commands"):
+                load_command_catalog(repo_root, manifest_path)
+
+    def test_fails_when_required_contract_definition_is_missing(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ],
+            contract_lines=["contracts:", "  []"],
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            with self.assertRaisesRegex(CommandSurfaceLoadError, "requires unknown contract"):
+                load_command_catalog(repo_root, manifest_path)
+
+
+if __name__ == "__main__":
+    unittest.main()

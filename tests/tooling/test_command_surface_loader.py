@@ -140,6 +140,66 @@ command_metadata:
             ):
                 load_command_catalog(repo_root, manifest_path)
 
+    def test_fails_when_command_id_contains_nested_path_segments(self) -> None:
+        manifest_text = """\
+contracts:
+  - id: research-before-spec
+    description: research-before-spec description
+    validator: framework/scripts/gates/research-before-spec.py
+must_command_contracts:
+  /research/nested:
+    requires:
+      - research-before-spec
+command_tiers:
+  /research/nested: core
+command_metadata:
+  /research/nested:
+    summary: Summary for /research/nested
+    when_to_use: When to use /research/nested
+    next_steps:
+      - /research/nested
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                CommandSurfaceLoadError,
+                "must_command_contracts contains invalid entries: /research/nested",
+            ):
+                load_command_catalog(repo_root, manifest_path)
+
+    def test_fails_when_command_tier_key_contains_path_traversal(self) -> None:
+        manifest_text = """\
+contracts:
+  - id: research-before-spec
+    description: research-before-spec description
+    validator: framework/scripts/gates/research-before-spec.py
+must_command_contracts:
+  /research:
+    requires:
+      - research-before-spec
+command_tiers:
+  /../research: core
+command_metadata:
+  /research:
+    summary: Summary for /research
+    when_to_use: When to use /research
+    next_steps:
+      - /research
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                CommandSurfaceLoadError,
+                r"command_tiers contains invalid entries: /\.\./research",
+            ):
+                load_command_catalog(repo_root, manifest_path)
+
     def test_fails_when_next_step_references_unknown_command(self) -> None:
         manifest_text = build_manifest(
             [

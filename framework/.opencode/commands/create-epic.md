@@ -13,6 +13,7 @@ Turn a PRD into an implementation-ready Epic and issue split.
 After the PRD is stable enough to define engineering work.
 
 ## Required Contracts
+- `research-before-spec` - Research artifact exists before PRD/Epic creation (`framework/scripts/gates/validate_research_contract.py`)
 - `spec-quality-minimum` - PRD/Epic include measurable acceptance criteria and out-of-scope section (`framework/scripts/gates/validate_spec_quality.py`)
 
 ## Next Commands

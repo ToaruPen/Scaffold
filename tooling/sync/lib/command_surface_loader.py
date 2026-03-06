@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
 from framework.scripts.lib.contract_loader import find_contract, load_manifest
 
 _ALLOWED_TIERS = {"core", "conditional"}
+_COMMAND_ID_PATTERN = re.compile(r"^/[A-Za-z0-9_-]+$")
 
 # TODO(issue-28): remove Ruff suppressions ANN401, C901, PLR0912, and PLR0915
 # by splitting manifest validation from catalog normalization and tightening types.
@@ -57,6 +59,14 @@ def _require_string_list(value: Any, *, field_name: str) -> list[str]:
     return result
 
 
+def _is_valid_command_id(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    if ".." in value or "\\" in value:
+        return False
+    return bool(_COMMAND_ID_PATTERN.fullmatch(value))
+
+
 def load_command_catalog(
     repo_root: Path,
     manifest_path: str | Path,
@@ -88,7 +98,7 @@ def load_command_catalog(
         command_metadata = raw_metadata
 
     invalid_must_commands = sorted(
-        str(command) for command in must_command_contracts if not isinstance(command, str)
+        str(command) for command in must_command_contracts if not _is_valid_command_id(command)
     )
     if invalid_must_commands:
         details = ", ".join(invalid_must_commands)
@@ -97,7 +107,7 @@ def load_command_catalog(
     invalid_tiers = sorted(
         str(command)
         for command, tier in command_tiers.items()
-        if not isinstance(command, str) or tier not in _ALLOWED_TIERS
+        if not _is_valid_command_id(command) or tier not in _ALLOWED_TIERS
     )
     if invalid_tiers:
         details = ", ".join(invalid_tiers)
@@ -117,7 +127,7 @@ def load_command_catalog(
         )
 
     invalid_metadata_commands = sorted(
-        str(command) for command in command_metadata if not isinstance(command, str)
+        str(command) for command in command_metadata if not _is_valid_command_id(command)
     )
     if invalid_metadata_commands:
         details = ", ".join(invalid_metadata_commands)

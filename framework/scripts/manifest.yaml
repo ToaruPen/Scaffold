@@ -110,6 +110,7 @@ must_command_contracts:
 
   /create-epic:
     requires:
+      - research-before-spec
       - spec-quality-minimum
 
   /create-issues:

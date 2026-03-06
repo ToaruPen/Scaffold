@@ -58,6 +58,12 @@ class GenerateCommandSurfacesTests(unittest.TestCase):
             exit_code = self.script.main()
         return exit_code, stdout.getvalue(), stderr.getvalue()
 
+    def _run_script_in_cwd(self, argv: list[str], cwd: Path) -> tuple[int, str, str]:
+        old_cwd = Path.cwd()
+        self.addCleanup(os.chdir, old_cwd)
+        os.chdir(cwd)
+        return self._run_script(argv)
+
     def test_generates_core_only_by_default(self) -> None:
         manifest_text = build_manifest(
             [
@@ -97,7 +103,7 @@ class GenerateCommandSurfacesTests(unittest.TestCase):
                 "all",
             ]
 
-            exit_code, _, _ = self._run_script(argv)
+            exit_code, _, _ = self._run_script_in_cwd(argv, tmp_path)
             self.assertEqual(exit_code, 0)
             for agent in ("codex", "claude", "opencode"):
                 payload = json.loads(
@@ -140,7 +146,7 @@ class GenerateCommandSurfacesTests(unittest.TestCase):
                 "--enable-conditional",
             ]
 
-            exit_code, _, _ = self._run_script(argv)
+            exit_code, _, _ = self._run_script_in_cwd(argv, tmp_path)
             self.assertEqual(exit_code, 0)
             payload = json.loads((output_root / "codex.commands.json").read_text(encoding="utf-8"))
             self.assertEqual(payload["commands"], ["/research", "/waiver"])
@@ -181,7 +187,7 @@ command_metadata:
                 "claude",
             ]
 
-            exit_code, _, stderr = self._run_script(argv)
+            exit_code, _, stderr = self._run_script_in_cwd(argv, tmp_path)
             self.assertEqual(exit_code, 2)
             self.assertIn("must_command_contracts missing tier classification", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())
@@ -214,7 +220,7 @@ command_metadata:
                 "claude",
             ]
 
-            exit_code, _, stderr = self._run_script(argv)
+            exit_code, _, stderr = self._run_script_in_cwd(argv, tmp_path)
             self.assertEqual(exit_code, 0)
             payload = json.loads((output_root / "claude.commands.json").read_text(encoding="utf-8"))
             self.assertEqual(payload["commands"], ["/research"])
@@ -255,7 +261,7 @@ command_metadata:
                 "claude",
             ]
 
-            exit_code, _, stderr = self._run_script(argv)
+            exit_code, _, stderr = self._run_script_in_cwd(argv, tmp_path)
             self.assertEqual(exit_code, 2)
             self.assertIn("failed to parse manifest yaml", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())
@@ -296,7 +302,7 @@ command_metadata:
                 "claude",
             ]
 
-            exit_code, _, stderr = self._run_script(argv)
+            exit_code, _, stderr = self._run_script_in_cwd(argv, tmp_path)
             self.assertEqual(exit_code, 2)
             self.assertIn("command_tiers contains invalid entries", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())
@@ -339,7 +345,7 @@ command_metadata:
                 "claude",
             ]
 
-            exit_code, _, stderr = self._run_script(argv)
+            exit_code, _, stderr = self._run_script_in_cwd(argv, tmp_path)
             self.assertEqual(exit_code, 2)
             self.assertIn("must_command_contracts contains invalid entries: 123", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())
@@ -372,7 +378,7 @@ command_metadata:
             ]
 
             with patch.object(self.script.Path, "mkdir", side_effect=OSError("permission denied")):
-                exit_code, _, stderr = self._run_script(argv)
+                exit_code, _, stderr = self._run_script_in_cwd(argv, tmp_path)
             self.assertEqual(exit_code, 2)
             self.assertIn("permission denied", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())

@@ -208,12 +208,12 @@ command_metadata:
             tmp_path = Path(tmp)
             repo_root = tmp_path / "repo"
             repo_root.mkdir()
-            manifest_path = tmp_path / "manifest.yaml"
+            manifest_path = repo_root / "manifest.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
 
             old_cwd = Path.cwd()
             self.addCleanup(os.chdir, old_cwd)
-            os.chdir(tmp_path)
+            os.chdir(repo_root)
             exit_code, _, _ = self._run_script(
                 [
                     "generate_markdown_command_exports.py",

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from framework.scripts.lib.engine_runner import _run_engine
 from framework.scripts.lib.paths_metadata import RunnerConfig
@@ -40,6 +42,26 @@ class EngineRunnerTests(unittest.TestCase):
                     prompt_text="prompt",
                     raw_output_path=repo_root / "raw-output.txt",
                 )
+
+    def test_run_engine_resolves_relative_schema_paths_against_repo_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            schema_path = repo_root / "schema.json"
+            schema_path.write_text('{"type":"object"}', encoding="utf-8")
+
+            with patch("framework.scripts.lib.engine_runner._ci_run_command") as run_command:
+                run_command.return_value = subprocess.CompletedProcess(
+                    args=["claude"], returncode=0, stdout="{}", stderr=""
+                )
+                result = _run_engine(
+                    config=_config("claude"),
+                    repo_root=repo_root,
+                    prompt_text="prompt",
+                    raw_output_path=repo_root / "raw-output.txt",
+                )
+
+        self.assertEqual(result, "{}")
+        run_command.assert_called_once()
 
 
 if __name__ == "__main__":

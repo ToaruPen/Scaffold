@@ -80,9 +80,33 @@ class CommandSurfaceLoaderTests(unittest.TestCase):
             manifest_path = temp_root / "outside.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
 
-            catalog = load_command_catalog(repo_root, manifest_path)
+            with self.assertRaisesRegex(
+                CommandSurfaceLoadError, "manifest_path must stay within repo_root"
+            ):
+                load_command_catalog(repo_root, manifest_path)
 
-            self.assertEqual(catalog["manifest_path"], "outside.yaml")
+    def test_rejects_relative_manifest_escape_outside_repo_root(self) -> None:
+        manifest_text = build_manifest(
+            [
+                {
+                    "id": "/research",
+                    "tier": "core",
+                    "requires": ["research-before-spec"],
+                    "next_steps": ["/research"],
+                }
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_root = Path(tmp)
+            repo_root = temp_root / "repo"
+            repo_root.mkdir()
+            outside_manifest = temp_root / "outside.yaml"
+            outside_manifest.write_text(manifest_text, encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                CommandSurfaceLoadError, "manifest_path must stay within repo_root"
+            ):
+                load_command_catalog(repo_root, Path("../outside.yaml"))
 
     def test_fails_when_command_metadata_entry_is_missing(self) -> None:
         manifest_text = build_manifest(

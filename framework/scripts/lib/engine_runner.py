@@ -134,6 +134,17 @@ def _run_engine(
     prompt_text: str,
     raw_output_path: Path,
 ) -> str:
+    canonical_schema_path = (
+        config.canonical_schema
+        if config.canonical_schema.is_absolute()
+        else repo_root / config.canonical_schema
+    )
+    codex_schema_path = (
+        config.codex_schema
+        if config.codex_schema.is_absolute()
+        else repo_root / config.codex_schema
+    )
+
     if config.engine == "codex":
         command = ["codex", "exec"]
         if config.codex_model:
@@ -146,7 +157,7 @@ def _run_engine(
                 "--sandbox",
                 "read-only",
                 "--output-schema",
-                str(config.codex_schema),
+                str(codex_schema_path),
                 "--output-last-message",
                 str(raw_output_path),
                 "-",
@@ -167,7 +178,7 @@ def _run_engine(
 
     if config.engine == "claude":
         schema_text = json.dumps(
-            json.loads(config.canonical_schema.read_text(encoding="utf-8")), separators=(",", ":")
+            json.loads(canonical_schema_path.read_text(encoding="utf-8")), separators=(",", ":")
         )
         command = [
             "claude",

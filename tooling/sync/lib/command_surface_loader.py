@@ -18,18 +18,23 @@ class CommandSurfaceLoadError(ValueError):
 
 
 def _resolve_path(repo_root: Path, raw: str | Path) -> Path:
+    root = repo_root.resolve()
     path = raw if isinstance(raw, Path) else Path(raw)
-    if path.is_absolute():
-        return path
-    return repo_root / path
+    candidate = path if path.is_absolute() else root / path
+    resolved = candidate.resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise CommandSurfaceLoadError("manifest_path must stay within repo_root") from exc
+    return resolved
 
 
 def _normalize_manifest_ref(repo_root: Path, resolved_path: Path) -> str:
+    root = repo_root.resolve()
     try:
-        relative = resolved_path.relative_to(repo_root)
-        return str(relative)
-    except ValueError:
-        return resolved_path.name
+        return str(resolved_path.resolve().relative_to(root))
+    except ValueError as exc:
+        raise CommandSurfaceLoadError("manifest_path must stay within repo_root") from exc
 
 
 def _require_mapping(parent: dict[str, Any], key: str) -> dict[str, Any]:

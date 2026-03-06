@@ -37,7 +37,10 @@ def validate_schema_file(
                 repo_root / ".venv/Scripts/check-jsonschema",
             ]
             if sys.platform.startswith("win")
-            else [repo_root / ".venv/bin/check-jsonschema"]
+            else [
+                repo_root / ".venv/bin/check-jsonschema",
+                repo_root / ".venv/bin/check-jsonschema.exe",
+            ]
         )
         local_executable = next((path for path in candidates if path.is_file()), None)
         executable = str(local_executable) if local_executable is not None else "check-jsonschema"

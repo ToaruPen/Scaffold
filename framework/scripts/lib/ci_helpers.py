@@ -16,6 +16,7 @@ from framework.scripts.lib.exit_codes import (
 
 _ALLOWED_BINARIES = {
     "check-jsonschema",
+    "check-jsonschema.exe",
     "claude",
     "codex",
     "git",

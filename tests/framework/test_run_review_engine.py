@@ -324,6 +324,7 @@ class RunReviewEngineTests(unittest.TestCase):
             with (
                 patch.object(self.runner, "_git_short_sha", side_effect=["abc1234", "def5678"]),
                 patch.object(self.runner, "_git_has_worktree_changes", return_value=True),
+                patch.object(self.runner, "_run_engine") as run_engine,
                 patch.object(sys, "argv", argv),
             ):
                 old_cwd = Path.cwd()
@@ -334,6 +335,7 @@ class RunReviewEngineTests(unittest.TestCase):
                     os.chdir(old_cwd)
 
             self.assertEqual(exit_code, 2)
+            run_engine.assert_not_called()
 
 
 if __name__ == "__main__":

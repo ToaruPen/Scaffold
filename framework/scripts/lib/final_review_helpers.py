@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from framework.scripts.ci import run_review_engine as shared
 from framework.scripts.lib.ci_helpers import relative_path, run_command, run_gate, write_json
+from framework.scripts.lib.paths_metadata import ReviewContext
 
 
 @dataclass(frozen=True)
@@ -39,7 +39,7 @@ def _collect_changed_paths(repo_root: Path, base_ref: str) -> list[str]:
 
 def _build_drift_input(
     *,
-    context: shared.ReviewContext,
+    context: ReviewContext,
     artifact_path: str,
     declared_targets: list[str],
     changed_paths: list[str],
@@ -58,7 +58,7 @@ def _build_drift_input(
 
 def _build_adr_index_input(
     *,
-    context: shared.ReviewContext,
+    context: ReviewContext,
     artifact_path: str,
     entries: list[dict[str, Any]],
 ) -> dict[str, object]:
@@ -127,7 +127,7 @@ def _load_declared_targets(
     *,
     repo_root: Path,
     results_dir: Path,
-    context: shared.ReviewContext,
+    context: ReviewContext,
     declared_targets_file: Path | None,
 ) -> list[str]:
     results_root = results_dir if results_dir.is_absolute() else repo_root / results_dir
@@ -178,7 +178,7 @@ def run_drift_and_adr_gates(
     *,
     repo_root: Path,
     base_ref: str,
-    context: shared.ReviewContext,
+    context: ReviewContext,
     config: DriftAdrGateConfig,
 ) -> tuple[int, int, Path, Path, Path, Path]:
     changed_paths = _collect_changed_paths(repo_root, base_ref)

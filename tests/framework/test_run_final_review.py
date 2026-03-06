@@ -88,9 +88,9 @@ def _run_runner_main(
     with (
         patch.object(runner.shared, "_parse_args", side_effect=runner.shared._parse_args),
         patch.object(runner.shared, "_git_short_sha", side_effect=["abc1234", "def5678"]),
-        patch.object(runner.shared, "_run_engine", side_effect=fake_run_engine),
-        patch.object(runner.shared, "_validate_schema", return_value=None),
-        patch.object(runner.shared, "_run_gate", side_effect=fake_run_gate),
+        patch.object(runner, "_run_engine", side_effect=fake_run_engine),
+        patch.object(runner, "_validate_schema", return_value=None),
+        patch.object(runner, "_run_gate", side_effect=fake_run_gate),
         patch.object(runner, "run_drift_and_adr_gates", side_effect=fake_run_drift_and_adr_gates),
         patch.object(sys, "argv", argv),
     ):

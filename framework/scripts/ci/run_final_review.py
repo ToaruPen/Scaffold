@@ -11,7 +11,17 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from framework.scripts.ci import run_review_engine as shared
+from framework.scripts.lib.engine_runner import (
+    _extract_review_json,
+    _normalize_review,
+    _run_engine,
+    _validate_schema,
+    _write_json,
+)
 from framework.scripts.lib.final_review_helpers import DriftAdrGateConfig, run_drift_and_adr_gates
+from framework.scripts.lib.gates import _build_gate_input, _run_gate
+from framework.scripts.lib.paths_metadata import ReviewContext, _relative_path
+from framework.scripts.lib.prompt import _load_prompt_template, _render_prompt
 
 _STAGE = "final-review"
 
@@ -40,8 +50,8 @@ def main() -> int:
     intermediate_dir.mkdir(parents=True, exist_ok=True)
 
     review_json_path = output_dir / f"{_STAGE}.json"
-    artifact_path = shared._relative_path(repo_root, review_json_path)
-    context = shared.ReviewContext(
+    artifact_path = _relative_path(repo_root, review_json_path)
+    context = ReviewContext(
         request_id=request_id,
         scope_id=config.scope_id,
         run_id=config.run_id,
@@ -52,8 +62,8 @@ def main() -> int:
         engine=config.engine,
     )
     try:
-        instructions, focus_paths = shared._load_prompt_template(repo_root / config.prompt_template)
-        prompt_text = shared._render_prompt(
+        instructions, focus_paths = _load_prompt_template(repo_root / config.prompt_template)
+        prompt_text = _render_prompt(
             instructions=instructions,
             focus_paths=focus_paths,
             context=context,
@@ -61,32 +71,32 @@ def main() -> int:
         (intermediate_dir / "prompt.txt").write_text(prompt_text, encoding="utf-8")
 
         raw_output_path = intermediate_dir / "raw-output.txt"
-        raw_text = shared._run_engine(
+        raw_text = _run_engine(
             config=config,
             repo_root=repo_root,
             prompt_text=prompt_text,
             raw_output_path=raw_output_path,
         )
 
-        extracted = shared._extract_review_json(raw_text)
-        normalized = shared._normalize_review(
+        extracted = _extract_review_json(raw_text)
+        normalized = _normalize_review(
             payload=extracted,
             context=context,
         )
-        shared._write_json(review_json_path, normalized)
-        shared._validate_schema(repo_root, repo_root / config.canonical_schema, review_json_path)
+        _write_json(review_json_path, normalized)
+        _validate_schema(repo_root, repo_root / config.canonical_schema, review_json_path)
 
         stage_input = intermediate_dir / f"{_STAGE}.input.json"
         stage_result = output_dir / f"{_STAGE}.result.json"
-        shared._write_json(
+        _write_json(
             stage_input,
-            shared._build_gate_input(
+            _build_gate_input(
                 artifact_path=artifact_path,
                 review_payload=normalized,
                 context=context,
             ),
         )
-        stage_exit = shared._run_gate(
+        stage_exit = _run_gate(
             repo_root=repo_root,
             gate_script=repo_root / "framework/scripts/gates/validate_final_review.py",
             input_path=stage_input,
@@ -95,16 +105,16 @@ def main() -> int:
 
         evidence_input = intermediate_dir / "review-evidence.input.json"
         evidence_result = output_dir / "review-evidence.result.json"
-        evidence_artifact = shared._relative_path(repo_root, evidence_result)
-        shared._write_json(
+        evidence_artifact = _relative_path(repo_root, evidence_result)
+        _write_json(
             evidence_input,
-            shared._build_gate_input(
+            _build_gate_input(
                 artifact_path=evidence_artifact,
                 review_payload=normalized,
                 context=context,
             ),
         )
-        evidence_exit = shared._run_gate(
+        evidence_exit = _run_gate(
             repo_root=repo_root,
             gate_script=repo_root / "framework/scripts/gates/validate_review_evidence.py",
             input_path=evidence_input,
@@ -136,20 +146,20 @@ def main() -> int:
             "head_sha": head_sha,
             "base_ref": config.base_ref,
             "base_sha": base_sha,
-            "run_dir": shared._relative_path(repo_root, run_dir),
-            "output_dir": shared._relative_path(repo_root, output_dir),
-            "intermediate_dir": shared._relative_path(repo_root, intermediate_dir),
+            "run_dir": _relative_path(repo_root, run_dir),
+            "output_dir": _relative_path(repo_root, output_dir),
+            "intermediate_dir": _relative_path(repo_root, intermediate_dir),
             "review_json": artifact_path,
-            "stage_result": shared._relative_path(repo_root, stage_result),
-            "review_evidence_result": shared._relative_path(repo_root, evidence_result),
-            "drift_detection_result": shared._relative_path(repo_root, drift_result),
-            "adr_index_result": shared._relative_path(repo_root, adr_result),
-            "stage_input": shared._relative_path(repo_root, stage_input),
-            "review_evidence_input": shared._relative_path(repo_root, evidence_input),
-            "drift_detection_input": shared._relative_path(repo_root, drift_input),
-            "adr_index_input": shared._relative_path(repo_root, adr_input),
-            "raw_output": shared._relative_path(repo_root, raw_output_path),
-            "prompt": shared._relative_path(repo_root, intermediate_dir / "prompt.txt"),
+            "stage_result": _relative_path(repo_root, stage_result),
+            "review_evidence_result": _relative_path(repo_root, evidence_result),
+            "drift_detection_result": _relative_path(repo_root, drift_result),
+            "adr_index_result": _relative_path(repo_root, adr_result),
+            "stage_input": _relative_path(repo_root, stage_input),
+            "review_evidence_input": _relative_path(repo_root, evidence_input),
+            "drift_detection_input": _relative_path(repo_root, drift_input),
+            "adr_index_input": _relative_path(repo_root, adr_input),
+            "raw_output": _relative_path(repo_root, raw_output_path),
+            "prompt": _relative_path(repo_root, intermediate_dir / "prompt.txt"),
             "stage_exit_code": stage_exit,
             "review_evidence_exit_code": evidence_exit,
             "drift_detection_exit_code": drift_exit,
@@ -161,15 +171,15 @@ def main() -> int:
                 config.codex_reasoning_effort if config.engine == "codex" else config.claude_effort
             ),
             "entrypoints": {
-                "primary_review": shared._relative_path(repo_root, review_json_path),
-                "final_review_gate_result": shared._relative_path(repo_root, stage_result),
-                "review_evidence_gate_result": shared._relative_path(repo_root, evidence_result),
-                "drift_detection_gate_result": shared._relative_path(repo_root, drift_result),
-                "adr_index_gate_result": shared._relative_path(repo_root, adr_result),
+                "primary_review": _relative_path(repo_root, review_json_path),
+                "final_review_gate_result": _relative_path(repo_root, stage_result),
+                "review_evidence_gate_result": _relative_path(repo_root, evidence_result),
+                "drift_detection_gate_result": _relative_path(repo_root, drift_result),
+                "adr_index_gate_result": _relative_path(repo_root, adr_result),
             },
         }
-        shared._write_json(output_dir / "index.json", metadata)
-        shared._write_json(output_dir / "run-metadata.json", metadata)
+        _write_json(output_dir / "index.json", metadata)
+        _write_json(output_dir / "run-metadata.json", metadata)
 
         print(json.dumps(metadata, ensure_ascii=True, indent=2, sort_keys=True))
         return (
@@ -186,9 +196,9 @@ def main() -> int:
             "head_sha": head_sha,
             "base_ref": config.base_ref,
             "base_sha": base_sha,
-            "run_dir": shared._relative_path(repo_root, run_dir),
-            "output_dir": shared._relative_path(repo_root, output_dir),
-            "intermediate_dir": shared._relative_path(repo_root, intermediate_dir),
+            "run_dir": _relative_path(repo_root, run_dir),
+            "output_dir": _relative_path(repo_root, output_dir),
+            "intermediate_dir": _relative_path(repo_root, intermediate_dir),
             "review_json": artifact_path,
             "status": "error",
             "error": str(exc),
@@ -197,8 +207,8 @@ def main() -> int:
             "drift_detection_exit_code": 2,
             "adr_index_exit_code": 2,
         }
-        shared._write_json(output_dir / "index.json", error_metadata)
-        shared._write_json(output_dir / "run-metadata.json", error_metadata)
+        _write_json(output_dir / "index.json", error_metadata)
+        _write_json(output_dir / "run-metadata.json", error_metadata)
         print(json.dumps(error_metadata, ensure_ascii=True, indent=2, sort_keys=True))
         return 2
 

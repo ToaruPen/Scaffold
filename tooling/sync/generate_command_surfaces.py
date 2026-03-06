@@ -95,7 +95,12 @@ def main() -> int:
     )
 
     try:
-        catalog = load_command_catalog(runtime_root, args.manifest)
+        catalog = load_command_catalog(
+            runtime_root,
+            args.manifest,
+            require_metadata=False,
+            require_contracts=False,
+        )
         output_root.mkdir(parents=True, exist_ok=True)
         for agent in _target_agents(args.agent):
             payload = _build_surface(

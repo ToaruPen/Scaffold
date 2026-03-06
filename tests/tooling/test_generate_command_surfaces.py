@@ -185,7 +185,7 @@ command_metadata:
             self.assertIn("must_command_contracts missing tier classification", stderr)
             self.assertFalse((output_root / "claude.commands.json").exists())
 
-    def test_fails_when_command_metadata_is_missing(self) -> None:
+    def test_allows_missing_command_metadata_for_json_surface_generation(self) -> None:
         manifest_text = build_manifest(
             [
                 {
@@ -214,8 +214,9 @@ command_metadata:
             ]
 
             exit_code, _, stderr = self._run_script(argv)
-            self.assertEqual(exit_code, 2)
-            self.assertIn("command_metadata must be a mapping", stderr)
+            self.assertEqual(exit_code, 0)
+            payload = json.loads((output_root / "claude.commands.json").read_text(encoding="utf-8"))
+            self.assertEqual(payload["commands"], ["/research"])
 
     def test_fails_on_malformed_manifest_yaml(self) -> None:
         manifest_text = """\

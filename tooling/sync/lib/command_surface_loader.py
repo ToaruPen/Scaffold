@@ -54,7 +54,13 @@ def _require_string_list(value: Any, *, field_name: str) -> list[str]:
     return result
 
 
-def load_command_catalog(repo_root: Path, manifest_path: str | Path) -> dict[str, Any]:
+def load_command_catalog(
+    repo_root: Path,
+    manifest_path: str | Path,
+    *,
+    require_metadata: bool = True,
+    require_contracts: bool = True,
+) -> dict[str, Any]:
     manifest_ref = manifest_path if isinstance(manifest_path, Path) else Path(manifest_path)
     resolved_manifest_path = _resolve_path(repo_root, manifest_ref)
     try:
@@ -63,12 +69,20 @@ def load_command_catalog(repo_root: Path, manifest_path: str | Path) -> dict[str
         raise CommandSurfaceLoadError(str(exc)) from exc
 
     contracts = manifest.get("contracts")
-    if not isinstance(contracts, list):
+    if require_contracts and not isinstance(contracts, list):
         raise CommandSurfaceLoadError("contracts must be a list")
 
     must_command_contracts = _require_mapping(manifest, "must_command_contracts")
     command_tiers = _require_mapping(manifest, "command_tiers")
-    command_metadata = _require_mapping(manifest, "command_metadata")
+    if require_metadata:
+        command_metadata = _require_mapping(manifest, "command_metadata")
+    else:
+        raw_metadata = manifest.get("command_metadata", {})
+        if raw_metadata is None:
+            raw_metadata = {}
+        if not isinstance(raw_metadata, dict):
+            raise CommandSurfaceLoadError("command_metadata must be a mapping")
+        command_metadata = raw_metadata
 
     invalid_must_commands = sorted(
         str(command) for command in must_command_contracts if not isinstance(command, str)
@@ -107,40 +121,50 @@ def load_command_catalog(repo_root: Path, manifest_path: str | Path) -> dict[str
         raise CommandSurfaceLoadError(f"command_metadata contains invalid entries: {details}")
 
     metadata_ids = set(command_metadata)
-    missing_metadata = sorted(
-        command for command in tier_command_ids if command not in metadata_ids
-    )
-    if missing_metadata:
-        details = ", ".join(missing_metadata)
-        raise CommandSurfaceLoadError(f"command_metadata missing entries: {details}")
+    if require_metadata:
+        missing_metadata = sorted(
+            command for command in tier_command_ids if command not in metadata_ids
+        )
+        if missing_metadata:
+            details = ", ".join(missing_metadata)
+            raise CommandSurfaceLoadError(f"command_metadata missing entries: {details}")
 
-    extra_metadata = sorted(command for command in metadata_ids if command not in tier_command_ids)
-    if extra_metadata:
-        details = ", ".join(extra_metadata)
-        raise CommandSurfaceLoadError(f"command_metadata contains unknown commands: {details}")
+        extra_metadata = sorted(
+            command for command in metadata_ids if command not in tier_command_ids
+        )
+        if extra_metadata:
+            details = ", ".join(extra_metadata)
+            raise CommandSurfaceLoadError(f"command_metadata contains unknown commands: {details}")
 
     commands: list[dict[str, Any]] = []
     tiers = {"core": [], "conditional": []}
 
     for command_id in command_ids:
-        metadata_entry = command_metadata.get(command_id)
+        metadata_entry = command_metadata.get(command_id, {})
         if not isinstance(metadata_entry, dict):
             raise CommandSurfaceLoadError(f"command_metadata[{command_id}] must be a mapping")
 
-        summary = _require_string(metadata_entry.get("summary"), field_name=f"{command_id}.summary")
-        when_to_use = _require_string(
-            metadata_entry.get("when_to_use"), field_name=f"{command_id}.when_to_use"
-        )
-        next_steps = _require_string_list(
-            metadata_entry.get("next_steps"), field_name=f"{command_id}.next_steps"
-        )
-
-        invalid_next_steps = sorted(step for step in next_steps if step not in tier_command_ids)
-        if invalid_next_steps:
-            details = ", ".join(invalid_next_steps)
-            raise CommandSurfaceLoadError(
-                f"{command_id}.next_steps contains unknown commands: {details}"
+        if require_metadata:
+            summary = _require_string(
+                metadata_entry.get("summary"), field_name=f"{command_id}.summary"
             )
+            when_to_use = _require_string(
+                metadata_entry.get("when_to_use"), field_name=f"{command_id}.when_to_use"
+            )
+            next_steps = _require_string_list(
+                metadata_entry.get("next_steps"), field_name=f"{command_id}.next_steps"
+            )
+
+            invalid_next_steps = sorted(step for step in next_steps if step not in tier_command_ids)
+            if invalid_next_steps:
+                details = ", ".join(invalid_next_steps)
+                raise CommandSurfaceLoadError(
+                    f"{command_id}.next_steps contains unknown commands: {details}"
+                )
+        else:
+            summary = ""
+            when_to_use = ""
+            next_steps = []
 
         required_contract_ids: list[str] = []
         command_payload = must_command_contracts.get(command_id)
@@ -154,25 +178,26 @@ def load_command_catalog(repo_root: Path, manifest_path: str | Path) -> dict[str
             )
 
         required_contracts: list[dict[str, str]] = []
-        for contract_id in required_contract_ids:
-            contract = find_contract(manifest, contract_id)
-            if contract is None:
-                raise CommandSurfaceLoadError(
-                    f"{command_id} requires unknown contract: {contract_id}"
+        if require_contracts:
+            for contract_id in required_contract_ids:
+                contract = find_contract(manifest, contract_id)
+                if contract is None:
+                    raise CommandSurfaceLoadError(
+                        f"{command_id} requires unknown contract: {contract_id}"
+                    )
+                description = _require_string(
+                    contract.get("description"), field_name=f"contract {contract_id} description"
                 )
-            description = _require_string(
-                contract.get("description"), field_name=f"contract {contract_id} description"
-            )
-            validator = _require_string(
-                contract.get("validator"), field_name=f"contract {contract_id} validator"
-            )
-            required_contracts.append(
-                {
-                    "id": contract_id,
-                    "description": description,
-                    "validator": validator,
-                }
-            )
+                validator = _require_string(
+                    contract.get("validator"), field_name=f"contract {contract_id} validator"
+                )
+                required_contracts.append(
+                    {
+                        "id": contract_id,
+                        "description": description,
+                        "validator": validator,
+                    }
+                )
 
         tier = command_tiers[command_id]
         command_info = {

@@ -31,9 +31,13 @@ def _extend_must_contract_lines(lines: list[str], commands: list[dict[str, Any]]
     lines.append("must_command_contracts:")
     for command in commands:
         lines.append(f"  {command['id']}:")
-        lines.append("    requires:")
-        for contract_id in command.get("requires", []):
-            lines.append(f"      - {contract_id}")
+        requires = command.get("requires", [])
+        if requires:
+            lines.append("    requires:")
+            for contract_id in requires:
+                lines.append(f"      - {contract_id}")
+        else:
+            lines.append("    requires: []")
 
 
 def _extend_tier_lines(lines: list[str], commands: list[dict[str, Any]]) -> None:
@@ -48,9 +52,13 @@ def _extend_metadata_lines(lines: list[str], commands: list[dict[str, Any]]) -> 
         lines.append(f"  {command['id']}:")
         lines.append(f"    summary: Summary for {command['id']}")
         lines.append(f"    when_to_use: When to use {command['id']}")
-        lines.append("    next_steps:")
-        for next_step in command.get("next_steps", []):
-            lines.append(f"      - {next_step}")
+        next_steps = command.get("next_steps", [])
+        if next_steps:
+            lines.append("    next_steps:")
+            for next_step in next_steps:
+                lines.append(f"      - {next_step}")
+        else:
+            lines.append("    next_steps: []")
 
 
 def build_manifest(

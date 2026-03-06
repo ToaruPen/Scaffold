@@ -7,6 +7,9 @@ from framework.scripts.lib.contract_loader import find_contract, load_manifest
 
 _ALLOWED_TIERS = {"core", "conditional"}
 
+# TODO(issue-28): remove Ruff suppressions ANN401, C901, PLR0912, and PLR0915
+# by splitting manifest validation from catalog normalization and tightening types.
+
 
 class CommandSurfaceLoadError(ValueError):
     pass

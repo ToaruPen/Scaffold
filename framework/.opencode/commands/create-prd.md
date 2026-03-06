@@ -13,6 +13,7 @@ Draft a PRD with measurable acceptance criteria and out-of-scope boundaries.
 After research evidence exists and the problem needs product-level scope.
 
 ## Required Contracts
+- `research-before-spec` - Research artifact exists before PRD/Epic creation (`framework/scripts/gates/validate_research_contract.py`)
 - `spec-quality-minimum` - PRD/Epic include measurable acceptance criteria and out-of-scope section (`framework/scripts/gates/validate_spec_quality.py`)
 
 ## Next Commands

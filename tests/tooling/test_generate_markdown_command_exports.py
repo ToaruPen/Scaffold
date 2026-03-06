@@ -308,7 +308,13 @@ command_metadata:
             self.assertTrue(skill_path.exists())
             content = skill_path.read_text(encoding="utf-8")
             self.assertIn("name: worktree", content)
-            self.assertIn("description: Handles Scaffold `/worktree` contract guidance", content)
+            self.assertIn(
+                (
+                    'description: "Handles Scaffold `/worktree` contract guidance '
+                    'and required evidence."'
+                ),
+                content,
+            )
             self.assertIn("## Required Contracts", content)
 
     def test_generates_conditional_preview_without_touching_root_outputs(self) -> None:

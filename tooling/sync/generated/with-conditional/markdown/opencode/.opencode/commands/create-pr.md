@@ -14,7 +14,7 @@ When the branch is ready to publish for CI and external review.
 
 ## Required Contracts
 - `scope-lock` - Scope identity (issue/branch/pr head/range) must match before high-impact operations (`framework/scripts/gates/validate_scope_lock.py`)
-- `pr-open-preconditions` - PR creation requires required evidence and scope lock validation (`framework/scripts/gates/validate_pr_preconditions.py`)
+- `pr-open-preconditions` - PR creation requires evidence and scope lock validation (`framework/scripts/gates/validate_pr_preconditions.py`)
 - `review-evidence-link` - Review evidence links to current commit/range (`framework/scripts/gates/validate_review_evidence.py`)
 
 ## Next Commands

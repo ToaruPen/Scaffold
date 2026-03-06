@@ -75,7 +75,7 @@ contracts:
     status: implemented
 
   - id: pr-open-preconditions
-    description: PR creation requires required evidence and scope lock validation
+    description: PR creation requires evidence and scope lock validation
     validator: framework/scripts/gates/validate_pr_preconditions.py
     result_schema: framework/.agent/schemas/gates/pr-preconditions-result.schema.json
     status: implemented
@@ -105,6 +105,7 @@ must_command_contracts:
 
   /create-prd:
     requires:
+      - research-before-spec
       - spec-quality-minimum
 
   /create-epic:

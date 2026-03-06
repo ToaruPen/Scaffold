@@ -258,7 +258,6 @@ command_metadata:
     when_to_use: Only when a documented exception is needed to keep the flow auditable.
     next_steps:
       - /final-review
-      - /create-pr
 
 adapter_interfaces:
   review_engine:

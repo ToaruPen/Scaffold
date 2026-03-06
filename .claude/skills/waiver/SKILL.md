@@ -18,7 +18,6 @@ Only when a documented exception is needed to keep the flow auditable.
 
 ## Next Commands
 - `/final-review`
-- `/create-pr`
 
 ## Source Of Truth
 - `framework/scripts/manifest.yaml`

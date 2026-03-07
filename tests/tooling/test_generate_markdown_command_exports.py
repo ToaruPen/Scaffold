@@ -26,7 +26,6 @@ def _load_script_module() -> ModuleType:
     )
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -1037,7 +1036,7 @@ command_metadata:
                 stale_paths: list[Path],
                 output_base: Path,
             ) -> list[Path]:
-                if "tooling/sync/generated/with-conditional/markdown" in str(output_base):
+                if "tooling/sync/generated/with-conditional/markdown" in output_base.as_posix():
                     raise CommandSurfaceLoadError("preview write failed")
                 return cast(
                     list[Path],

@@ -156,14 +156,14 @@ class RunFinalReviewTests(unittest.TestCase):
             self.assertTrue((intermediate_dir / "drift-detection.input.json").exists())
             self.assertTrue((intermediate_dir / "adr-index.input.json").exists())
 
-            review_payload = json.loads(
+            loaded_review = json.loads(
                 (output_dir / "final-review.json").read_text(encoding="utf-8")
             )
             evidence_input = json.loads(
                 (intermediate_dir / "review-evidence.input.json").read_text(encoding="utf-8")
             )
             self.assertEqual(
-                evidence_input["artifact_path"], review_payload["evidence"]["artifact_path"]
+                evidence_input["artifact_path"], loaded_review["evidence"]["artifact_path"]
             )
 
     def test_main_returns_nonzero_when_gate_fails(self) -> None:

@@ -263,6 +263,66 @@ command_metadata:
             ):
                 load_command_catalog(repo_root, manifest_path)
 
+    def test_fails_when_windows_reserved_slug_is_used(self) -> None:
+        manifest_text = """\
+contracts:
+  - id: research-before-spec
+    description: research-before-spec description
+    validator: framework/scripts/gates/research-before-spec.py
+must_command_contracts:
+  /CON:
+    requires:
+      - research-before-spec
+command_tiers:
+  /CON: core
+command_metadata:
+  /CON:
+    summary: Summary for /CON
+    when_to_use: When to use /CON
+    next_steps:
+      - /CON
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                CommandSurfaceLoadError,
+                r"must_command_contracts contains invalid entries: /CON",
+            ):
+                load_command_catalog(repo_root, manifest_path)
+
+    def test_fails_when_slug_collides_across_catalog_sections(self) -> None:
+        manifest_text = """\
+contracts:
+  - id: research-before-spec
+    description: research-before-spec description
+    validator: framework/scripts/gates/research-before-spec.py
+must_command_contracts:
+  /Foo:
+    requires:
+      - research-before-spec
+command_tiers:
+  /foo: core
+command_metadata:
+  /foo:
+    summary: Summary for /foo
+    when_to_use: When to use /foo
+    next_steps:
+      - /foo
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            manifest_path = repo_root / "manifest.yaml"
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                CommandSurfaceLoadError,
+                r"command_catalog contains slug collisions: /Foo, /foo",
+            ):
+                load_command_catalog(repo_root, manifest_path)
+
     def test_fails_when_next_step_references_unknown_command(self) -> None:
         manifest_text = build_manifest(
             [

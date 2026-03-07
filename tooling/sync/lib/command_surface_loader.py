@@ -8,6 +8,14 @@ from framework.scripts.lib.contract_loader import find_contract, load_manifest
 
 _ALLOWED_TIERS = {"core", "conditional"}
 _COMMAND_ID_PATTERN = re.compile(r"^/[A-Za-z0-9_-]+$")
+_WINDOWS_RESERVED_NAMES = {
+    "con",
+    "prn",
+    "aux",
+    "nul",
+    *(f"com{index}" for index in range(1, 10)),
+    *(f"lpt{index}" for index in range(1, 10)),
+}
 
 # TODO(issue-28): remove Ruff suppressions ANN401, C901, PLR0912, and PLR0915
 # by splitting manifest validation from catalog normalization and tightening types.
@@ -70,7 +78,12 @@ def _is_valid_command_id(value: object) -> bool:
         return False
     if ".." in value or "\\" in value:
         return False
-    return bool(_COMMAND_ID_PATTERN.fullmatch(value))
+    if not _COMMAND_ID_PATTERN.fullmatch(value):
+        return False
+    slug = _slug_key(value)
+    first_segment = slug.split("/", 1)[0]
+    base_name = first_segment.split(".", 1)[0]
+    return base_name not in _WINDOWS_RESERVED_NAMES
 
 
 def _slug_key(command_id: str) -> str:
@@ -141,7 +154,25 @@ def load_command_catalog(
     command_ids = sorted(str(command) for command in command_tiers)
     _raise_on_slug_collisions(command_ids, field_name="command_tiers")
     must_command_ids = set(must_command_contracts)
+    _raise_on_slug_collisions(
+        sorted(str(command) for command in must_command_ids),
+        field_name="must_command_contracts",
+    )
     tier_command_ids = set(command_ids)
+    metadata_ids = set(command_metadata)
+    _raise_on_slug_collisions(
+        sorted(str(command) for command in metadata_ids), field_name="command_metadata"
+    )
+    _raise_on_slug_collisions(
+        sorted(
+            {
+                *(str(command) for command in must_command_ids),
+                *(str(command) for command in tier_command_ids),
+                *(str(command) for command in metadata_ids),
+            }
+        ),
+        field_name="command_catalog",
+    )
 
     missing_tiers = sorted(
         command for command in must_command_ids if command not in tier_command_ids
@@ -159,10 +190,6 @@ def load_command_catalog(
         details = ", ".join(invalid_metadata_commands)
         raise CommandSurfaceLoadError(f"command_metadata contains invalid entries: {details}")
 
-    metadata_ids = set(command_metadata)
-    _raise_on_slug_collisions(
-        sorted(str(command) for command in metadata_ids), field_name="command_metadata"
-    )
     if require_metadata:
         missing_metadata = sorted(
             command for command in tier_command_ids if command not in metadata_ids

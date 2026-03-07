@@ -208,12 +208,14 @@ command_metadata:
             tmp_path = Path(tmp)
             repo_root = tmp_path / "repo"
             repo_root.mkdir()
-            manifest_path = repo_root / "manifest.yaml"
+            cwd_path = repo_root / "cwd"
+            cwd_path.mkdir()
+            manifest_path = cwd_path / "manifest.yaml"
             manifest_path.write_text(manifest_text, encoding="utf-8")
 
             old_cwd = Path.cwd()
             self.addCleanup(os.chdir, old_cwd)
-            os.chdir(repo_root)
+            os.chdir(cwd_path)
             exit_code, _, _ = self._run_script(
                 [
                     "generate_markdown_command_exports.py",
@@ -228,7 +230,7 @@ command_metadata:
 
             self.assertEqual(exit_code, 0)
             content = _active_opencode_path(repo_root, "research").read_text(encoding="utf-8")
-            self.assertIn("- `manifest.yaml`", content)
+            self.assertIn("cwd/manifest.yaml`", content)
 
     def test_filters_conditional_next_steps_from_root_core_exports(self) -> None:
         manifest_text = build_manifest(

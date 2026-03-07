@@ -500,10 +500,7 @@ command_metadata:
             output_root = tmp_path / "out"
             manifest_path.write_text(manifest_text, encoding="utf-8")
 
-            old_cwd = Path.cwd()
-            self.addCleanup(os.chdir, old_cwd)
-            os.chdir(tmp_path)
-            exit_code, _, _ = self._run_script(
+            exit_code, _, _ = self._run_script_in_cwd(
                 [
                     "generate_command_surfaces.py",
                     "--manifest",
@@ -512,7 +509,8 @@ command_metadata:
                     str(output_root),
                     "--agent",
                     "claude",
-                ]
+                ],
+                tmp_path,
             )
 
             self.assertEqual(exit_code, 0)

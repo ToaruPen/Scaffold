@@ -172,6 +172,8 @@ def main() -> int:
                 "adr_index_gate_result": _relative_path(repo_root, adr_result),
             },
         }
+        # Keep both entrypoints in sync: `index.json` is the canonical lookup file,
+        # while `run-metadata.json` preserves the legacy filename expected by tooling.
         _write_json(output_dir / "index.json", metadata)
         _write_json(output_dir / "run-metadata.json", metadata)
 
@@ -201,6 +203,7 @@ def main() -> int:
             "drift_detection_exit_code": 2,
             "adr_index_exit_code": 2,
         }
+        # Mirror error payloads to both metadata filenames for the same reason.
         _write_json(output_dir / "index.json", error_metadata)
         _write_json(output_dir / "run-metadata.json", error_metadata)
         print(json.dumps(error_metadata, ensure_ascii=True, indent=2, sort_keys=True))

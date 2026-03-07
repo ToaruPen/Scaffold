@@ -11,7 +11,7 @@ description: "Handles Scaffold `/review-cycle` contract guidance and required ev
 Run the local review loop and refresh review evidence for the current diff.
 
 ## When To Use
-After implementation changes are ready for structured review feedback.
+After implementation changes are committed to the review branch and the branch is ready for structured review feedback.
 
 ## Required Contracts
 - `review-cycle-evidence` - review-cycle evidence exists and passes contract checks

@@ -43,6 +43,12 @@ Review chain stages:
 1. review-cycle
 2. final-review
 
+Review chain prerequisites:
+
+- Commit implementation changes before starting the review chain and stash only unrelated local changes that should not be reviewed.
+- Run the review chain from a clean working tree so evidence stays linked to a stable commit/range.
+- Ensure the target base ref exists locally before invoking the runners.
+
 Runners:
 
 - `framework/scripts/ci/run_review_engine.py`
@@ -106,7 +112,7 @@ python3 -m pip install -r framework/requirements-dev.txt
 
 ### Review runner refuses dirty working tree
 
-- `review-cycle` evidence is linked to commit/range, so commit or stash local changes first.
+- `review-cycle` evidence is linked to commit/range, so commit the changes to review first and stash only unrelated local changes.
 - Re-run the runner after the working tree is clean.
 
 ## Release Checklist

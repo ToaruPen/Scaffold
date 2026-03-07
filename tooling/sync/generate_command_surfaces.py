@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -12,6 +13,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from tooling.sync.lib.command_surface_loader import (  # noqa: E402
     CommandSurfaceLoadError,
+    CommandTier,
     load_command_catalog,
 )
 
@@ -64,7 +66,7 @@ def _build_surface(
     *,
     agent: str,
     manifest_path: str,
-    tiers: dict[str, list[str]],
+    tiers: Mapping[CommandTier, list[str]],
     include_conditional: bool,
 ) -> dict[str, object]:
     core = list(tiers["core"])

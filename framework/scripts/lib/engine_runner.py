@@ -7,8 +7,12 @@ from typing import Any
 
 from framework.scripts.lib.ci_helpers import run_command as _ci_run_command
 from framework.scripts.lib.ci_helpers import write_json as _ci_write_json
+from framework.scripts.lib.git_ref import quote_git_ref_for_shell, validate_git_ref
 from framework.scripts.lib.paths_metadata import ReviewContext, RunnerConfig
 from framework.scripts.lib.schema_validator import validate_schema_file as _validate_schema_file
+
+_CLAUDE_BUILTIN_TOOLS = ["Read", "Glob", "Grep", "LS", "Bash"]
+_CLAUDE_READONLY_REVIEW_SHELL = "python3 framework/scripts/ci/readonly_review_shell.py"
 
 
 def _decode_json_object(text: str) -> dict[str, Any] | None:
@@ -127,6 +131,72 @@ def _validate_schema(repo_root: Path, schema_path: Path, target_path: Path) -> N
     )
 
 
+def _extend_claude_flag(command: list[str], flag: str, values: list[str]) -> None:
+    if values:
+        command[1:1] = [flag, *values]
+
+
+def _build_claude_allowed_tools(base_ref: str) -> list[str]:
+    safe_base_ref = quote_git_ref_for_shell(base_ref)
+    return [
+        "Read",
+        "Glob",
+        "Grep",
+        "LS",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-status)",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-diff {safe_base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-log {safe_base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-changed-files {safe_base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-show-head)",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-rev-parse-head)",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-rev-parse-base {safe_base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-merge-base {safe_base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-branch-current)",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-remote-origin)",
+    ]
+
+
+def _claude_prompt_addendum(base_ref: str, allowed_tools: list[str]) -> str:
+    validate_git_ref(base_ref)
+    bash_commands = [tool[5:-1] for tool in allowed_tools if tool.startswith("Bash(")]
+    lines = [
+        "",
+        "Claude read-only inspection commands:",
+        "- Use the exact Bash commands below when you need Git context.",
+        "- Do not attempt other Bash commands; they are intentionally blocked.",
+    ]
+    lines.extend(f"- {command}" for command in bash_commands)
+    return "\n".join(lines)
+
+
+def _build_claude_command(
+    *,
+    schema_text: str,
+    prompt_text: str,
+    config: RunnerConfig,
+) -> list[str]:
+    validated_ref = validate_git_ref(config.base_ref)
+    allowed_tools = _build_claude_allowed_tools(validated_ref)
+    command = [
+        "claude",
+        "-p",
+        "--permission-mode",
+        "dontAsk",
+        "--output-format",
+        "json",
+        "--json-schema",
+        schema_text,
+        prompt_text + _claude_prompt_addendum(validated_ref, allowed_tools),
+    ]
+    _extend_claude_flag(command, "--tools", [",".join(_CLAUDE_BUILTIN_TOOLS)])
+    _extend_claude_flag(command, "--allowedTools", allowed_tools)
+    if config.claude_model:
+        command[1:1] = ["--model", config.claude_model]
+    if config.claude_effort:
+        command[1:1] = ["--effort", config.claude_effort]
+    return command
+
+
 def _run_engine(
     *,
     config: RunnerConfig,
@@ -180,21 +250,11 @@ def _run_engine(
         schema_text = json.dumps(
             json.loads(canonical_schema_path.read_text(encoding="utf-8")), separators=(",", ":")
         )
-        command = [
-            "claude",
-            "-p",
-            "--permission-mode",
-            "bypassPermissions",
-            "--output-format",
-            "json",
-            "--json-schema",
-            schema_text,
-            prompt_text,
-        ]
-        if config.claude_model:
-            command[1:1] = ["--model", config.claude_model]
-        if config.claude_effort:
-            command[1:1] = ["--effort", config.claude_effort]
+        command = _build_claude_command(
+            schema_text=schema_text,
+            prompt_text=prompt_text,
+            config=config,
+        )
         result = _ci_run_command(command, cwd=repo_root, timeout_sec=config.timeout_sec)
         if result.returncode != 0:
             message = result.stderr.strip() or result.stdout.strip()

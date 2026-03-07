@@ -7,8 +7,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from framework.scripts.lib.engine_runner import (
-    _CLAUDE_ALLOWED_TOOLS,
     _CLAUDE_BUILTIN_TOOLS,
+    _CLAUDE_READONLY_REVIEW_SHELL,
+    _build_claude_allowed_tools,
     _run_engine,
 )
 from framework.scripts.lib.paths_metadata import RunnerConfig
@@ -102,8 +103,25 @@ class EngineRunnerTests(unittest.TestCase):
         self.assertIn("--tools", command)
         self.assertIn(",".join(_CLAUDE_BUILTIN_TOOLS), command)
         self.assertIn("--allowed-tools", command)
-        for tool in _CLAUDE_ALLOWED_TOOLS:
+        for tool in _build_claude_allowed_tools("main"):
             self.assertIn(tool, command)
+        self.assertIn(
+            f"{_CLAUDE_READONLY_REVIEW_SHELL} git-diff main",
+            command[-1],
+        )
+
+    def test_build_claude_allowed_tools_uses_exact_readonly_commands(self) -> None:
+        tools = _build_claude_allowed_tools("origin/main")
+
+        self.assertNotIn(":*", "\n".join(tools))
+        self.assertIn(
+            f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-diff origin/main)",
+            tools,
+        )
+        self.assertIn(
+            f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-show-head)",
+            tools,
+        )
 
 
 if __name__ == "__main__":

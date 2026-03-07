@@ -11,35 +11,7 @@ from framework.scripts.lib.paths_metadata import ReviewContext, RunnerConfig
 from framework.scripts.lib.schema_validator import validate_schema_file as _validate_schema_file
 
 _CLAUDE_BUILTIN_TOOLS = ["Read", "Glob", "Grep", "LS", "Bash"]
-_CLAUDE_ALLOWED_TOOLS = [
-    "Read",
-    "Glob",
-    "Grep",
-    "LS",
-    "Bash(pwd)",
-    "Bash(ls)",
-    "Bash(ls:*)",
-    "Bash(rg)",
-    "Bash(rg:*)",
-    "Bash(sg)",
-    "Bash(sg:*)",
-    "Bash(git status)",
-    "Bash(git status:*)",
-    "Bash(git diff)",
-    "Bash(git diff:*)",
-    "Bash(git log)",
-    "Bash(git log:*)",
-    "Bash(git show)",
-    "Bash(git show:*)",
-    "Bash(git rev-parse)",
-    "Bash(git rev-parse:*)",
-    "Bash(git merge-base)",
-    "Bash(git merge-base:*)",
-    "Bash(git branch)",
-    "Bash(git branch:*)",
-    "Bash(git remote)",
-    "Bash(git remote:*)",
-]
+_CLAUDE_READONLY_REVIEW_SHELL = "python3 framework/scripts/ci/readonly_review_shell.py"
 
 
 def _decode_json_object(text: str) -> dict[str, Any] | None:
@@ -163,12 +135,45 @@ def _extend_claude_flag(command: list[str], flag: str, values: list[str]) -> Non
         command[1:1] = [flag, *values]
 
 
+def _build_claude_allowed_tools(base_ref: str) -> list[str]:
+    return [
+        "Read",
+        "Glob",
+        "Grep",
+        "LS",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-status)",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-diff {base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-log {base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-changed-files {base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-show-head)",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-rev-parse-head)",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-rev-parse-base {base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-merge-base {base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-branch-current)",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-remote-origin)",
+    ]
+
+
+def _claude_prompt_addendum(base_ref: str) -> str:
+    commands = _build_claude_allowed_tools(base_ref)
+    bash_commands = [tool[5:-1] for tool in commands if tool.startswith("Bash(")]
+    lines = [
+        "",
+        "Claude read-only inspection commands:",
+        "- Use the exact Bash commands below when you need Git context.",
+        "- Do not attempt other Bash commands; they are intentionally blocked.",
+    ]
+    lines.extend(f"- {command}" for command in bash_commands)
+    return "\n".join(lines)
+
+
 def _build_claude_command(
     *,
     schema_text: str,
     prompt_text: str,
     config: RunnerConfig,
 ) -> list[str]:
+    allowed_tools = _build_claude_allowed_tools(config.base_ref)
     command = [
         "claude",
         "-p",
@@ -178,10 +183,10 @@ def _build_claude_command(
         "json",
         "--json-schema",
         schema_text,
-        prompt_text,
+        prompt_text + _claude_prompt_addendum(config.base_ref),
     ]
     _extend_claude_flag(command, "--tools", [",".join(_CLAUDE_BUILTIN_TOOLS)])
-    _extend_claude_flag(command, "--allowed-tools", _CLAUDE_ALLOWED_TOOLS)
+    _extend_claude_flag(command, "--allowed-tools", allowed_tools)
     if config.claude_model:
         command[1:1] = ["--model", config.claude_model]
     if config.claude_effort:

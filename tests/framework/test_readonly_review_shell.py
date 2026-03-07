@@ -6,6 +6,11 @@ from framework.scripts.ci import readonly_review_shell
 
 
 class ReadonlyReviewShellTests(unittest.TestCase):
+    def test_builds_command_for_no_ref_action(self) -> None:
+        command = readonly_review_shell._command_for_action(["git-status"])
+
+        self.assertEqual(command, ["git", "status", "--short", "--branch"])
+
     def test_builds_diff_command_for_valid_base_ref(self) -> None:
         command = readonly_review_shell._command_for_action(["git-diff", "origin/main"])
 
@@ -25,6 +30,14 @@ class ReadonlyReviewShellTests(unittest.TestCase):
     def test_rejects_double_dot_git_ref(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid git ref"):
             readonly_review_shell._command_for_action(["git-diff", "main..origin/main"])
+
+    def test_rejects_missing_ref_for_diff(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unexpected arguments"):
+            readonly_review_shell._command_for_action(["git-diff"])
+
+    def test_rejects_extra_args_for_no_ref_action(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unexpected arguments"):
+            readonly_review_shell._command_for_action(["git-status", "extra"])
 
     def test_rejects_unknown_action(self) -> None:
         with self.assertRaisesRegex(ValueError, "unsupported action"):

@@ -26,20 +26,20 @@ _BASE_REF_ACTIONS = {
     "git-rev-parse-base",
     "git-merge-base",
 }
+_BASE_REF_ACTION_TEMPLATES = {
+    "git-diff": ("git", "diff", "--stat", "--patch", "--unified=5", "{base_ref}...HEAD"),
+    "git-log": ("git", "log", "--oneline", "{base_ref}..HEAD"),
+    "git-changed-files": ("git", "diff", "--name-only", "{base_ref}...HEAD"),
+    "git-rev-parse-base": ("git", "rev-parse", "{base_ref}"),
+    "git-merge-base": ("git", "merge-base", "HEAD", "{base_ref}"),
+}
 
 
 def _build_base_ref_command(action: str, base_ref: str) -> list[str]:
-    commands = {
-        "git-diff": ["git", "diff", "--stat", "--patch", "--unified=5", f"{base_ref}...HEAD"],
-        "git-log": ["git", "log", "--oneline", f"{base_ref}..HEAD"],
-        "git-changed-files": ["git", "diff", "--name-only", f"{base_ref}...HEAD"],
-        "git-rev-parse-base": ["git", "rev-parse", base_ref],
-        "git-merge-base": ["git", "merge-base", "HEAD", base_ref],
-    }
-    command = commands.get(action)
-    if command is None:
+    template = _BASE_REF_ACTION_TEMPLATES.get(action)
+    if template is None:
         raise ValueError("unsupported action")
-    return command
+    return [part.format(base_ref=base_ref) for part in template]
 
 
 def _command_for_action(argv: list[str]) -> list[str]:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-_SAFE_GIT_REF = re.compile(r"^[^\x00-\x20\x7f~^:?*\[\\]+$")
+_SAFE_GIT_REF = re.compile(r"^[^\x00-\x20\x7f~^:?*\[\\;|&`'\"$()<>!]+$")
 
 
 def validate_git_ref(value: str) -> str:

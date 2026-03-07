@@ -157,7 +157,8 @@ def _build_claude_allowed_tools(base_ref: str) -> list[str]:
 
 
 def _claude_prompt_addendum(base_ref: str) -> str:
-    commands = _build_claude_allowed_tools(validate_git_ref(base_ref))
+    validated_ref = validate_git_ref(base_ref)
+    commands = _build_claude_allowed_tools(validated_ref)
     bash_commands = [tool[5:-1] for tool in commands if tool.startswith("Bash(")]
     lines = [
         "",

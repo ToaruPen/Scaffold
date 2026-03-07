@@ -30,6 +30,14 @@ class GitRefTests(unittest.TestCase):
             "main*topic",
             "main[topic",
             r"main\topic",
+            "origin/main;echo",
+            "origin/main|cat",
+            "origin/main&echo",
+            "origin/main`echo`",
+            "origin/main'quote",
+            'origin/main"quote',
+            "origin/main$(echo)",
+            "origin/main>out",
         ]
 
         for ref in invalid_refs:

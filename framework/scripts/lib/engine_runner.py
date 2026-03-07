@@ -10,6 +10,37 @@ from framework.scripts.lib.ci_helpers import write_json as _ci_write_json
 from framework.scripts.lib.paths_metadata import ReviewContext, RunnerConfig
 from framework.scripts.lib.schema_validator import validate_schema_file as _validate_schema_file
 
+_CLAUDE_BUILTIN_TOOLS = ["Read", "Glob", "Grep", "LS", "Bash"]
+_CLAUDE_ALLOWED_TOOLS = [
+    "Read",
+    "Glob",
+    "Grep",
+    "LS",
+    "Bash(pwd)",
+    "Bash(ls)",
+    "Bash(ls:*)",
+    "Bash(rg)",
+    "Bash(rg:*)",
+    "Bash(sg)",
+    "Bash(sg:*)",
+    "Bash(git status)",
+    "Bash(git status:*)",
+    "Bash(git diff)",
+    "Bash(git diff:*)",
+    "Bash(git log)",
+    "Bash(git log:*)",
+    "Bash(git show)",
+    "Bash(git show:*)",
+    "Bash(git rev-parse)",
+    "Bash(git rev-parse:*)",
+    "Bash(git merge-base)",
+    "Bash(git merge-base:*)",
+    "Bash(git branch)",
+    "Bash(git branch:*)",
+    "Bash(git remote)",
+    "Bash(git remote:*)",
+]
+
 
 def _decode_json_object(text: str) -> dict[str, Any] | None:
     stripped = text.strip()
@@ -127,6 +158,37 @@ def _validate_schema(repo_root: Path, schema_path: Path, target_path: Path) -> N
     )
 
 
+def _extend_claude_flag(command: list[str], flag: str, values: list[str]) -> None:
+    if values:
+        command[1:1] = [flag, *values]
+
+
+def _build_claude_command(
+    *,
+    schema_text: str,
+    prompt_text: str,
+    config: RunnerConfig,
+) -> list[str]:
+    command = [
+        "claude",
+        "-p",
+        "--permission-mode",
+        "dontAsk",
+        "--output-format",
+        "json",
+        "--json-schema",
+        schema_text,
+        prompt_text,
+    ]
+    _extend_claude_flag(command, "--tools", [",".join(_CLAUDE_BUILTIN_TOOLS)])
+    _extend_claude_flag(command, "--allowed-tools", _CLAUDE_ALLOWED_TOOLS)
+    if config.claude_model:
+        command[1:1] = ["--model", config.claude_model]
+    if config.claude_effort:
+        command[1:1] = ["--effort", config.claude_effort]
+    return command
+
+
 def _run_engine(
     *,
     config: RunnerConfig,
@@ -180,21 +242,11 @@ def _run_engine(
         schema_text = json.dumps(
             json.loads(canonical_schema_path.read_text(encoding="utf-8")), separators=(",", ":")
         )
-        command = [
-            "claude",
-            "-p",
-            "--permission-mode",
-            "bypassPermissions",
-            "--output-format",
-            "json",
-            "--json-schema",
-            schema_text,
-            prompt_text,
-        ]
-        if config.claude_model:
-            command[1:1] = ["--model", config.claude_model]
-        if config.claude_effort:
-            command[1:1] = ["--effort", config.claude_effort]
+        command = _build_claude_command(
+            schema_text=schema_text,
+            prompt_text=prompt_text,
+            config=config,
+        )
         result = _ci_run_command(command, cwd=repo_root, timeout_sec=config.timeout_sec)
         if result.returncode != 0:
             message = result.stderr.strip() or result.stdout.strip()

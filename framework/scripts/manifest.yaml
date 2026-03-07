@@ -231,20 +231,20 @@ command_metadata:
 
   /review-cycle:
     summary: Run the local review loop and refresh review evidence for the current diff.
-    when_to_use: After implementation changes are ready for structured review feedback.
+    when_to_use: After implementation changes are committed or stashed and the branch is ready for structured review feedback.
     next_steps:
       - /final-review
 
   /final-review:
     summary: Validate final review consistency, drift detection, and ADR linkage before opening a PR.
-    when_to_use: After review-cycle passes and the branch is nearly ready to publish.
+    when_to_use: After review-cycle passes on the clean commit/range that will be published.
     next_steps:
       - /create-pr
       - /waiver
 
   /create-pr:
     summary: Open or update a PR after scope lock and review evidence are current.
-    when_to_use: When the branch is ready to publish for CI and external review.
+    when_to_use: When review evidence is current and the committed branch is ready to publish for CI and external review.
     next_steps:
       - /pr-bots-review
 

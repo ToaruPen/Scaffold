@@ -6,7 +6,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from framework.scripts.lib.engine_runner import _run_engine
+from framework.scripts.lib.engine_runner import (
+    _CLAUDE_ALLOWED_TOOLS,
+    _CLAUDE_BUILTIN_TOOLS,
+    _run_engine,
+)
 from framework.scripts.lib.paths_metadata import RunnerConfig
 
 
@@ -62,6 +66,44 @@ class EngineRunnerTests(unittest.TestCase):
 
         self.assertEqual(result, "{}")
         run_command.assert_called_once()
+
+    def test_run_engine_uses_restricted_claude_tool_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            schema_path = repo_root / "schema.json"
+            schema_path.write_text('{"type":"object"}', encoding="utf-8")
+            config = _config("claude")
+            config = RunnerConfig(
+                **{
+                    **config.__dict__,
+                    "claude_model": "opus",
+                    "claude_effort": "high",
+                }
+            )
+
+            with patch("framework.scripts.lib.engine_runner._ci_run_command") as run_command:
+                run_command.return_value = subprocess.CompletedProcess(
+                    args=["claude"], returncode=0, stdout="{}", stderr=""
+                )
+                _run_engine(
+                    config=config,
+                    repo_root=repo_root,
+                    prompt_text="prompt",
+                    raw_output_path=repo_root / "raw-output.txt",
+                )
+
+        command = run_command.call_args.args[0]
+        self.assertIn("--permission-mode", command)
+        self.assertIn("dontAsk", command)
+        self.assertIn("--model", command)
+        self.assertIn("opus", command)
+        self.assertIn("--effort", command)
+        self.assertIn("high", command)
+        self.assertIn("--tools", command)
+        self.assertIn(",".join(_CLAUDE_BUILTIN_TOOLS), command)
+        self.assertIn("--allowed-tools", command)
+        for tool in _CLAUDE_ALLOWED_TOOLS:
+            self.assertIn(tool, command)
 
 
 if __name__ == "__main__":

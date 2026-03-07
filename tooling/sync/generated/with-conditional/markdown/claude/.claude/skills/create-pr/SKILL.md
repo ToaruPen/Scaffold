@@ -11,7 +11,7 @@ description: "Handles Scaffold `/create-pr` contract guidance and required evide
 Open or update a PR after scope lock and review evidence are current.
 
 ## When To Use
-When the branch is ready to publish for CI and external review.
+When review evidence is current and the committed branch is ready to publish for CI and external review.
 
 ## Required Contracts
 - `scope-lock` - Scope identity (issue/branch/pr head/range) must match before high-impact operations

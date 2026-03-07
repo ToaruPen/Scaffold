@@ -42,10 +42,6 @@ max-complexity = 10
 [tool.ruff.lint.per-file-ignores]
 "framework/scripts/gates/validate_*.py" = ["E402"]
 "framework/scripts/ci/run_*_review.py" = ["E402"]
-# issue-27: reduce complexity in generate_markdown_command_exports.py
-"tooling/sync/generate_markdown_command_exports.py" = ["C901", "PLR0912", "PLR0913", "SIM102", "SIM108"]
-# issue-28: simplify command_surface_loader.py
-"tooling/sync/lib/command_surface_loader.py" = ["ANN401", "C901", "PLR0912", "PLR0915"]
 
 [tool.mypy]
 python_version = "3.11"

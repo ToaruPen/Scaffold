@@ -43,6 +43,12 @@ Review chain stages:
 1. review-cycle
 2. final-review
 
+Review chain prerequisites:
+
+- Commit or stash local implementation changes before starting the review chain.
+- Run the review chain from a clean working tree so evidence stays linked to a stable commit/range.
+- Ensure the target base ref exists locally before invoking the runners.
+
 Runners:
 
 - `framework/scripts/ci/run_review_engine.py`

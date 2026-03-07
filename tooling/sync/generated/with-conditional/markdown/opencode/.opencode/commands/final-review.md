@@ -10,7 +10,7 @@ description: "Validate final review consistency, drift detection, and ADR linkag
 Validate final review consistency, drift detection, and ADR linkage before opening a PR.
 
 ## When To Use
-After review-cycle passes and the branch is nearly ready to publish.
+After review-cycle passes on the clean commit/range that will be published.
 
 ## Required Contracts
 - `final-review-consistency` - final-review evidence status and commit/range linkage are consistent (`framework/scripts/gates/validate_final_review.py`)

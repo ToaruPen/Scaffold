@@ -10,6 +10,8 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import patch
 
+from framework.scripts.lib.ci_helpers import _stream_to_text
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNNER_PATH = REPO_ROOT / "framework/scripts/ci/run_review_engine.py"
 PROMPT_TEMPLATE = REPO_ROOT / "framework/config/review-engine-prompt.json"
@@ -32,9 +34,9 @@ class RunReviewEngineTests(unittest.TestCase):
         cls.runner = _load_runner_module()
 
     def test_stream_to_text_handles_str_bytes_and_none(self) -> None:
-        self.assertEqual(self.runner._stream_to_text("abc"), "abc")
-        self.assertEqual(self.runner._stream_to_text(b"abc"), "abc")
-        self.assertEqual(self.runner._stream_to_text(None), "")
+        self.assertEqual(_stream_to_text("abc"), "abc")
+        self.assertEqual(_stream_to_text(b"abc"), "abc")
+        self.assertEqual(_stream_to_text(None), "")
 
     def test_extract_review_json_handles_result_string_envelope(self) -> None:
         payload = {

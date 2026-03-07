@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from framework.scripts.lib.ci_helpers import run_command as _ci_run_command
-from framework.scripts.lib.ci_helpers import write_json as _ci_write_json
 from framework.scripts.lib.git_ref import quote_git_ref_for_shell, validate_git_ref
 from framework.scripts.lib.paths_metadata import ReviewContext, RunnerConfig
 from framework.scripts.lib.schema_validator import validate_schema_file as _validate_schema_file
@@ -115,10 +114,6 @@ def _normalize_review(
     if context.base_sha is not None:
         normalized["evidence"]["base_sha"] = context.base_sha
     return normalized
-
-
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    _ci_write_json(path, payload)
 
 
 def _validate_schema(repo_root: Path, schema_path: Path, target_path: Path) -> None:

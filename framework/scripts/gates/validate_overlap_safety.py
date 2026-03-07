@@ -1,36 +1,21 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
-import json
+import sys
 from pathlib import Path
 from typing import Any
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-def _error(code: str, message: str) -> dict[str, Any]:
-    return {
-        "code": code,
-        "message": message,
-        "retryable": False,
-        "provider": "vcs",
-    }
-
-
-def _read_json(path: Path) -> dict[str, Any]:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        raise ValueError(f"failed to read input JSON: {exc}") from exc
-    if not isinstance(data, dict):
-        raise ValueError("input must be a JSON object")
-    return data
-
-
-def _require_text(obj: dict[str, Any], key: str) -> str:
-    raw = obj.get(key)
-    if not isinstance(raw, str) or not raw.strip():
-        raise ValueError(f"missing or invalid string: {key}")
-    return raw.strip()
+from framework.scripts.lib.gate_helpers import (
+    error_dict,
+    parse_gate_args,
+    read_json,
+    require_text,
+    write_result,
+)
 
 
 def _normalize_targets(values: object, key_name: str) -> set[str]:
@@ -68,7 +53,7 @@ def _active_scope_entries(active_scopes_raw: object, current_scope_id: str) -> l
     for scope in active_scopes_raw:
         if not isinstance(scope, dict):
             raise ValueError("each active scope must be an object")
-        other_scope_id = _require_text(scope, "scope_id")
+        other_scope_id = require_text(scope, "scope_id")
         if other_scope_id == current_scope_id:
             continue
         status = str(scope.get("status", "active")).strip().lower()
@@ -90,7 +75,7 @@ def _collect_overlaps(
     checked_scope_count = 0
 
     for scope in active_scopes:
-        other_scope_id = _require_text(scope, "scope_id")
+        other_scope_id = require_text(scope, "scope_id")
         other_targets = _normalize_targets(
             scope.get("targets"), f"active_scopes[{other_scope_id}].targets"
         )
@@ -108,10 +93,10 @@ def _collect_overlaps(
 
 
 def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
-    request_id = _require_text(payload, "request_id")
-    scope_id = _require_text(payload, "scope_id")
-    run_id = _require_text(payload, "run_id")
-    artifact_path = _require_text(payload, "artifact_path")
+    request_id = require_text(payload, "request_id")
+    scope_id = require_text(payload, "scope_id")
+    run_id = require_text(payload, "run_id")
+    artifact_path = require_text(payload, "artifact_path")
 
     current_targets = _normalize_targets(payload.get("current_targets"), "current_targets")
     current_allow = _waiver_pairs(payload)
@@ -143,20 +128,18 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         result["base_sha"] = base_sha.strip()
 
     if not passed:
-        result["errors"] = [_error("E_SCOPE_LOCK_FAILED", "overlap detected across active scopes")]
+        result["errors"] = [
+            error_dict("E_SCOPE_LOCK_FAILED", "overlap detected across active scopes", "vcs")
+        ]
     return result, passed
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate overlap safety contract")
-    parser.add_argument("--input", required=True, help="Path to input JSON")
-    parser.add_argument("--output", help="Path to write result JSON")
-    args = parser.parse_args()
-
+    args = parse_gate_args("Validate overlap safety contract")
     output_path = Path(args.output) if args.output else None
 
     try:
-        payload = _read_json(Path(args.input))
+        payload = read_json(Path(args.input))
         result, passed = _build_result(payload)
         exit_code = 0 if passed else 2
     except ValueError as exc:
@@ -168,15 +151,11 @@ def main() -> int:
             "artifact_path": "unknown",
             "checked_scope_count": 0,
             "overlaps": [],
-            "errors": [_error("E_INPUT_INVALID", str(exc))],
+            "errors": [error_dict("E_INPUT_INVALID", str(exc), "vcs")],
         }
         exit_code = 2
 
-    output_text = json.dumps(result, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
-    if output_path:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(output_text, encoding="utf-8")
-    print(output_text, end="")
+    write_result(result, output_path)
     return exit_code
 
 

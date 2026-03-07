@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import re
+import shlex
 
-_SAFE_GIT_REF = re.compile(r"^[^\x00-\x20\x7f~^:?*\[\\;|&`'\"$()<>!]+$")
+_SAFE_GIT_REF = re.compile(r"^[^\x00-\x20\x7f~^:?*\[\\]+$")
 
 
 def validate_git_ref(value: str) -> str:
@@ -25,3 +26,7 @@ def validate_git_ref(value: str) -> str:
         raise ValueError("invalid git ref")
 
     return value
+
+
+def quote_git_ref_for_shell(value: str) -> str:
+    return shlex.quote(validate_git_ref(value))

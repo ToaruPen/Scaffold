@@ -99,11 +99,10 @@ def main() -> int:
 
         evidence_input = intermediate_dir / "review-evidence.input.json"
         evidence_result = output_dir / "review-evidence.result.json"
-        evidence_artifact = _relative_path(repo_root, evidence_result)
         _write_json(
             evidence_input,
             _build_gate_input(
-                artifact_path=evidence_artifact,
+                artifact_path=artifact_path,
                 review_payload=normalized,
                 context=context,
             ),

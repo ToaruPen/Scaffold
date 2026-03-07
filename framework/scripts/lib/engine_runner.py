@@ -156,10 +156,9 @@ def _build_claude_allowed_tools(base_ref: str) -> list[str]:
     ]
 
 
-def _claude_prompt_addendum(base_ref: str) -> str:
-    validated_ref = validate_git_ref(base_ref)
-    commands = _build_claude_allowed_tools(validated_ref)
-    bash_commands = [tool[5:-1] for tool in commands if tool.startswith("Bash(")]
+def _claude_prompt_addendum(base_ref: str, allowed_tools: list[str]) -> str:
+    validate_git_ref(base_ref)
+    bash_commands = [tool[5:-1] for tool in allowed_tools if tool.startswith("Bash(")]
     lines = [
         "",
         "Claude read-only inspection commands:",
@@ -176,7 +175,8 @@ def _build_claude_command(
     prompt_text: str,
     config: RunnerConfig,
 ) -> list[str]:
-    allowed_tools = _build_claude_allowed_tools(config.base_ref)
+    validated_ref = validate_git_ref(config.base_ref)
+    allowed_tools = _build_claude_allowed_tools(validated_ref)
     command = [
         "claude",
         "-p",
@@ -186,7 +186,7 @@ def _build_claude_command(
         "json",
         "--json-schema",
         schema_text,
-        prompt_text + _claude_prompt_addendum(config.base_ref),
+        prompt_text + _claude_prompt_addendum(validated_ref, allowed_tools),
     ]
     _extend_claude_flag(command, "--tools", [",".join(_CLAUDE_BUILTIN_TOOLS)])
     _extend_claude_flag(command, "--allowedTools", allowed_tools)

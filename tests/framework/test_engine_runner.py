@@ -138,7 +138,17 @@ class EngineRunnerTests(unittest.TestCase):
 
     def test_claude_prompt_addendum_rejects_invalid_base_ref(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid git ref"):
-            _claude_prompt_addendum("main --bad")
+            _claude_prompt_addendum("main --bad", _build_claude_allowed_tools("main"))
+
+    def test_claude_prompt_addendum_uses_precomputed_allowed_tools(self) -> None:
+        allowed_tools = _build_claude_allowed_tools("feature$(echo)")
+
+        addendum = _claude_prompt_addendum("feature$(echo)", allowed_tools)
+
+        self.assertIn(
+            f"{_CLAUDE_READONLY_REVIEW_SHELL} git-diff 'feature$(echo)'",
+            addendum,
+        )
 
 
 if __name__ == "__main__":

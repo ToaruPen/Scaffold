@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -10,8 +9,8 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from framework.scripts.lib.ci_helpers import run_command  # noqa: E402
+from framework.scripts.lib.git_ref import validate_git_ref  # noqa: E402
 
-_SAFE_GIT_REF = re.compile(r"^[A-Za-z0-9._/@+-]+$")
 _ACTION_WITH_BASE_REF_ARGC = 2
 _NO_REF_ACTIONS = {
     "git-status": ["git", "status", "--short", "--branch"],
@@ -43,12 +42,6 @@ def _build_base_ref_command(action: str, base_ref: str) -> list[str]:
     return command
 
 
-def _require_git_ref(value: str) -> str:
-    if not value or value.startswith("-") or not _SAFE_GIT_REF.fullmatch(value):
-        raise ValueError("invalid git ref")
-    return value
-
-
 def _command_for_action(argv: list[str]) -> list[str]:
     if not argv:
         raise ValueError("missing action")
@@ -66,7 +59,7 @@ def _command_for_action(argv: list[str]) -> list[str]:
     if len(argv) != _ACTION_WITH_BASE_REF_ARGC:
         raise ValueError("unexpected arguments")
 
-    base_ref = _require_git_ref(argv[1])
+    base_ref = validate_git_ref(argv[1])
     return _build_base_ref_command(action, base_ref)
 
 

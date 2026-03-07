@@ -11,12 +11,12 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from framework.scripts.ci import run_review_engine as shared
+from framework.scripts.lib.ci_helpers import write_json as _write_json
 from framework.scripts.lib.engine_runner import (
     _extract_review_json,
     _normalize_review,
     _run_engine,
     _validate_schema,
-    _write_json,
 )
 from framework.scripts.lib.final_review_helpers import DriftAdrGateConfig, run_drift_and_adr_gates
 from framework.scripts.lib.gates import _build_gate_input, _run_gate

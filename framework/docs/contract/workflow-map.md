@@ -15,7 +15,7 @@ This map is the primary entry point for agents and maintainers.
 3. Create issue branch/worktree and validate overlap safety
 4. Create estimate and choose implementation mode (`impl` / `tdd` / custom)
 5. Implement and produce evidence
-6. Commit or stash implementation changes so review runs on a clean commit/range
+6. Commit implementation changes to the review branch and stash only unrelated local changes so review runs on a clean commit/range
 7. Run review chain (`review-cycle` -> `final-review`)
 8. Push and create/update PR
 9. Run PR bot feedback loop until resolved
@@ -39,6 +39,6 @@ This map is the primary entry point for agents and maintainers.
 
 - Requirement phase: PRD/Epic artifacts
 - Planning phase: issue change targets + estimate approval
-- Review preparation phase: clean working tree plus commit/range to review
+- Review preparation phase: clean working tree plus committed range to review
 - Review phase: review-cycle/final evidence linked to that commit/range
 - Merge phase: PR preconditions and bot feedback cycle records

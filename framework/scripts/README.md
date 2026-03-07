@@ -68,7 +68,7 @@ Distributable script layer for consumer repositories.
   - Claude review-cycle uses a read-only tool profile instead of permission bypass:
     - Permission mode: `dontAsk`
     - Built-in tools: `Read`, `Glob`, `Grep`, `LS`, `Bash`
-    - Allowed Bash patterns are limited to repository inspection commands such as `git status/log/diff/show/rev-parse/merge-base/branch/remote`, `rg`, `sg`, `ls`, and `pwd`
+    - Bash access is restricted to exact `python3 framework/scripts/ci/readonly_review_shell.py ...` commands for read-only Git inspection
     - Example high-depth invocation: `--engine claude --claude-model opus --claude-effort high`
 
 - `framework/scripts/ci/run_final_review.py`

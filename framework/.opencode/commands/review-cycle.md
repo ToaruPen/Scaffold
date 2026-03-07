@@ -10,7 +10,7 @@ description: "Run the local review loop and refresh review evidence for the curr
 Run the local review loop and refresh review evidence for the current diff.
 
 ## When To Use
-After implementation changes are committed or stashed and the branch is ready for structured review feedback.
+After implementation changes are committed to the review branch and the branch is ready for structured review feedback.
 
 ## Required Contracts
 - `review-cycle-evidence` - review-cycle evidence exists and passes contract checks (`framework/scripts/gates/validate_review_cycle.py`)

@@ -231,7 +231,7 @@ command_metadata:
 
   /review-cycle:
     summary: Run the local review loop and refresh review evidence for the current diff.
-    when_to_use: After implementation changes are committed or stashed and the branch is ready for structured review feedback.
+    when_to_use: After implementation changes are committed to the review branch and the branch is ready for structured review feedback.
     next_steps:
       - /final-review
 

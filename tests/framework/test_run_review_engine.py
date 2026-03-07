@@ -34,7 +34,6 @@ class RunReviewEngineTests(unittest.TestCase):
         cls.runner = _load_runner_module()
 
     def test_stream_to_text_handles_str_bytes_and_none(self) -> None:
-
         self.assertEqual(_stream_to_text("abc"), "abc")
         self.assertEqual(_stream_to_text(b"abc"), "abc")
         self.assertEqual(_stream_to_text(None), "")

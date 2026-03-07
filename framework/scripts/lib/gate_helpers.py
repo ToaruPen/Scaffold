@@ -19,7 +19,7 @@ def error_dict(code: str, message: str, provider: str) -> dict[str, Any]:
 def read_json(path: Path) -> dict[str, Any]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:
+    except (OSError, json.JSONDecodeError) as exc:
         raise ValueError(f"failed to read input JSON: {exc}") from exc
     if not isinstance(data, dict):
         raise ValueError("input must be a JSON object")
@@ -65,6 +65,14 @@ def require_int(obj: dict[str, Any], key: str, parent: str = "") -> int:
     prefix = f"{parent}." if parent else ""
     if not isinstance(raw, int) or isinstance(raw, bool):
         raise ValueError(f"missing or invalid integer: {prefix}{key}")
+    return raw
+
+
+def require_list(obj: dict[str, Any], key: str, parent: str = "") -> list[object]:
+    raw = obj.get(key)
+    prefix = f"{parent}." if parent else ""
+    if not isinstance(raw, list):
+        raise ValueError(f"missing or invalid array: {prefix}{key}")
     return raw
 
 

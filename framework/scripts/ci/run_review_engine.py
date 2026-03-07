@@ -11,61 +11,33 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-try:
-    from framework.scripts.lib.ci_helpers import (
-        run_command as _ci_run_command,
-    )
-    from framework.scripts.lib.engine_runner import (
-        _extract_review_json,
-        _normalize_review,
-        _run_engine,
-        _validate_schema,
-        _write_json,
-    )
-    from framework.scripts.lib.gates import _build_gate_input, _run_gate
-    from framework.scripts.lib.paths_metadata import (
-        ReviewContext,
-        RunnerConfig,
-        RunPaths,
-        RunResultState,
-        _build_metadata,
-        _build_run_paths,
-        _relative_path,
-    )
-    from framework.scripts.lib.prompt import _load_prompt_template, _render_prompt
-except ModuleNotFoundError:
-    repo_root = Path(__file__).resolve().parents[3]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    from framework.scripts.lib.ci_helpers import (
-        run_command as _ci_run_command,
-    )
-    from framework.scripts.lib.engine_runner import (
-        _extract_review_json,
-        _normalize_review,
-        _run_engine,
-        _validate_schema,
-        _write_json,
-    )
-    from framework.scripts.lib.gates import _build_gate_input, _run_gate
-    from framework.scripts.lib.paths_metadata import (
-        ReviewContext,
-        RunnerConfig,
-        RunPaths,
-        RunResultState,
-        _build_metadata,
-        _build_run_paths,
-        _relative_path,
-    )
-    from framework.scripts.lib.prompt import _load_prompt_template, _render_prompt
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-
-def _stream_to_text(value: object) -> str:
-    if isinstance(value, str):
-        return value
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return ""
+from framework.scripts.lib.ci_helpers import (
+    run_command as _ci_run_command,
+)
+from framework.scripts.lib.ci_helpers import (
+    write_json as _write_json,
+)
+from framework.scripts.lib.engine_runner import (
+    _extract_review_json,
+    _normalize_review,
+    _run_engine,
+    _validate_schema,
+)
+from framework.scripts.lib.gates import _build_gate_input, _run_gate
+from framework.scripts.lib.paths_metadata import (
+    ReviewContext,
+    RunnerConfig,
+    RunPaths,
+    RunResultState,
+    _build_metadata,
+    _build_run_paths,
+    _relative_path,
+)
+from framework.scripts.lib.prompt import _load_prompt_template, _render_prompt
 
 
 def _run_command(

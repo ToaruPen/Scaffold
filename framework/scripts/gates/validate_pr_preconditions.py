@@ -1,57 +1,26 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
-import json
+import sys
 from pathlib import Path
 from typing import Any
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from framework.scripts.lib.gate_helpers import (
+    error_dict,
+    optional_text,
+    parse_gate_args,
+    read_json,
+    require_object,
+    require_text,
+    write_result,
+)
+
 REQUIRED_REVIEW_STAGE_KEYS = ("review_cycle", "final_review")
 REQUIRED_GATE_STAGE_KEYS = ("drift_detection", "adr_index")
-
-
-def _error(code: str, message: str) -> dict[str, Any]:
-    return {
-        "code": code,
-        "message": message,
-        "retryable": False,
-        "provider": "vcs",
-    }
-
-
-def _read_json(path: Path) -> dict[str, Any]:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        raise ValueError(f"failed to read input JSON: {exc}") from exc
-    if not isinstance(data, dict):
-        raise ValueError("input must be a JSON object")
-    return data
-
-
-def _require_text(obj: dict[str, Any], key: str, parent: str = "") -> str:
-    raw = obj.get(key)
-    prefix = f"{parent}." if parent else ""
-    if not isinstance(raw, str) or not raw.strip():
-        raise ValueError(f"missing or invalid string: {prefix}{key}")
-    return raw.strip()
-
-
-def _optional_text(obj: dict[str, Any], key: str, parent: str = "") -> str | None:
-    raw = obj.get(key)
-    prefix = f"{parent}." if parent else ""
-    if raw is None:
-        return None
-    if not isinstance(raw, str) or not raw.strip():
-        raise ValueError(f"invalid string: {prefix}{key}")
-    return raw.strip()
-
-
-def _require_object(obj: dict[str, Any], key: str) -> dict[str, Any]:
-    raw = obj.get(key)
-    if not isinstance(raw, dict):
-        raise ValueError(f"missing or invalid object: {key}")
-    return raw
 
 
 def _validate_stage(
@@ -62,10 +31,10 @@ def _validate_stage(
     expected_base: str | None,
     mismatch_reasons: list[str],
 ) -> dict[str, str]:
-    stage_status = _require_text(stage_obj, "status", f"review_evidence.{stage_key}").lower()
-    stage_head = _require_text(stage_obj, "head_sha", f"review_evidence.{stage_key}")
-    stage_base = _optional_text(stage_obj, "base_sha", f"review_evidence.{stage_key}")
-    stage_artifact = _require_text(stage_obj, "artifact_path", f"review_evidence.{stage_key}")
+    stage_status = require_text(stage_obj, "status", f"review_evidence.{stage_key}").lower()
+    stage_head = require_text(stage_obj, "head_sha", f"review_evidence.{stage_key}")
+    stage_base = optional_text(stage_obj, "base_sha", f"review_evidence.{stage_key}")
+    stage_artifact = require_text(stage_obj, "artifact_path", f"review_evidence.{stage_key}")
 
     if stage_status != "pass":
         mismatch_reasons.append(f"{stage_key}_not_passed")
@@ -93,9 +62,9 @@ def _validate_gate_stage(
     stage_obj: dict[str, Any],
     mismatch_reasons: list[str],
 ) -> dict[str, str]:
-    raw_stage_status = _require_text(stage_obj, "status", f"review_evidence.{stage_key}").lower()
+    raw_stage_status = require_text(stage_obj, "status", f"review_evidence.{stage_key}").lower()
     stage_status = "pass" if raw_stage_status == "pass" else "fail"
-    stage_artifact = _require_text(stage_obj, "artifact_path", f"review_evidence.{stage_key}")
+    stage_artifact = require_text(stage_obj, "artifact_path", f"review_evidence.{stage_key}")
     if stage_status != "pass":
         mismatch_reasons.append(f"{stage_key}_not_passed")
     return {
@@ -133,23 +102,23 @@ def _scope_lock_mismatch_reasons(
 
 
 def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
-    request_id = _require_text(payload, "request_id")
-    scope_id = _require_text(payload, "scope_id")
-    run_id = _require_text(payload, "run_id")
-    artifact_path = _require_text(payload, "artifact_path")
+    request_id = require_text(payload, "request_id")
+    scope_id = require_text(payload, "scope_id")
+    run_id = require_text(payload, "run_id")
+    artifact_path = require_text(payload, "artifact_path")
 
-    expected = _require_object(payload, "expected")
-    expected_head = _require_text(expected, "head_sha", "expected")
-    expected_base = _optional_text(expected, "base_sha", "expected")
+    expected = require_object(payload, "expected")
+    expected_head = require_text(expected, "head_sha", "expected")
+    expected_base = optional_text(expected, "base_sha", "expected")
 
-    scope_lock = _require_object(payload, "scope_lock")
+    scope_lock = require_object(payload, "scope_lock")
     scope_lock_matched = scope_lock.get("matched")
     if not isinstance(scope_lock_matched, bool):
         raise ValueError("missing or invalid boolean: scope_lock.matched")
-    scope_lock_head = _require_text(scope_lock, "head_sha", "scope_lock")
-    scope_lock_base = _optional_text(scope_lock, "base_sha", "scope_lock")
+    scope_lock_head = require_text(scope_lock, "head_sha", "scope_lock")
+    scope_lock_base = optional_text(scope_lock, "base_sha", "scope_lock")
 
-    review_evidence = _require_object(payload, "review_evidence")
+    review_evidence = require_object(payload, "review_evidence")
 
     mismatch_reasons = _scope_lock_mismatch_reasons(
         scope_lock_matched=scope_lock_matched,
@@ -205,20 +174,18 @@ def _build_result(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         result["scope_lock"]["base_sha"] = scope_lock_base
 
     if not passed:
-        result["errors"] = [_error("E_PROVIDER_FAILURE", "pr preconditions check failed")]
+        result["errors"] = [
+            error_dict("E_PROVIDER_FAILURE", "pr preconditions check failed", "vcs")
+        ]
     return result, passed
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate PR preconditions contract")
-    parser.add_argument("--input", required=True, help="Path to input JSON")
-    parser.add_argument("--output", help="Path to write result JSON")
-    args = parser.parse_args()
-
+    args = parse_gate_args("Validate PR preconditions contract")
     output_path = Path(args.output) if args.output else None
 
     try:
-        payload = _read_json(Path(args.input))
+        payload = read_json(Path(args.input))
         result, passed = _build_result(payload)
         exit_code = 0 if passed else 2
     except ValueError as exc:
@@ -235,15 +202,11 @@ def main() -> int:
             "review_evidence": {},
             "head_sha": "unknown",
             "mismatch_reasons": ["invalid_input"],
-            "errors": [_error("E_INPUT_INVALID", str(exc))],
+            "errors": [error_dict("E_INPUT_INVALID", str(exc), "vcs")],
         }
         exit_code = 2
 
-    output_text = json.dumps(result, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
-    if output_path:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(output_text, encoding="utf-8")
-    print(output_text, end="")
+    write_result(result, output_path)
     return exit_code
 
 

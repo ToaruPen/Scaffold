@@ -7,6 +7,7 @@ from typing import Any
 
 from framework.scripts.lib.ci_helpers import run_command as _ci_run_command
 from framework.scripts.lib.ci_helpers import write_json as _ci_write_json
+from framework.scripts.lib.git_ref import validate_git_ref
 from framework.scripts.lib.paths_metadata import ReviewContext, RunnerConfig
 from framework.scripts.lib.schema_validator import validate_schema_file as _validate_schema_file
 
@@ -136,26 +137,27 @@ def _extend_claude_flag(command: list[str], flag: str, values: list[str]) -> Non
 
 
 def _build_claude_allowed_tools(base_ref: str) -> list[str]:
+    safe_base_ref = validate_git_ref(base_ref)
     return [
         "Read",
         "Glob",
         "Grep",
         "LS",
         f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-status)",
-        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-diff {base_ref})",
-        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-log {base_ref})",
-        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-changed-files {base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-diff {safe_base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-log {safe_base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-changed-files {safe_base_ref})",
         f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-show-head)",
         f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-rev-parse-head)",
-        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-rev-parse-base {base_ref})",
-        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-merge-base {base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-rev-parse-base {safe_base_ref})",
+        f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-merge-base {safe_base_ref})",
         f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-branch-current)",
         f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-remote-origin)",
     ]
 
 
 def _claude_prompt_addendum(base_ref: str) -> str:
-    commands = _build_claude_allowed_tools(base_ref)
+    commands = _build_claude_allowed_tools(validate_git_ref(base_ref))
     bash_commands = [tool[5:-1] for tool in commands if tool.startswith("Bash(")]
     lines = [
         "",
@@ -186,7 +188,7 @@ def _build_claude_command(
         prompt_text + _claude_prompt_addendum(config.base_ref),
     ]
     _extend_claude_flag(command, "--tools", [",".join(_CLAUDE_BUILTIN_TOOLS)])
-    _extend_claude_flag(command, "--allowed-tools", allowed_tools)
+    _extend_claude_flag(command, "--allowedTools", allowed_tools)
     if config.claude_model:
         command[1:1] = ["--model", config.claude_model]
     if config.claude_effort:

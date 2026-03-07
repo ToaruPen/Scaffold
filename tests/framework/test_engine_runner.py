@@ -10,6 +10,7 @@ from framework.scripts.lib.engine_runner import (
     _CLAUDE_BUILTIN_TOOLS,
     _CLAUDE_READONLY_REVIEW_SHELL,
     _build_claude_allowed_tools,
+    _claude_prompt_addendum,
     _run_engine,
 )
 from framework.scripts.lib.paths_metadata import RunnerConfig
@@ -102,7 +103,7 @@ class EngineRunnerTests(unittest.TestCase):
         self.assertIn("high", command)
         self.assertIn("--tools", command)
         self.assertIn(",".join(_CLAUDE_BUILTIN_TOOLS), command)
-        self.assertIn("--allowed-tools", command)
+        self.assertIn("--allowedTools", command)
         for tool in _build_claude_allowed_tools("main"):
             self.assertIn(tool, command)
         self.assertIn(
@@ -122,6 +123,14 @@ class EngineRunnerTests(unittest.TestCase):
             f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-show-head)",
             tools,
         )
+
+    def test_build_claude_allowed_tools_rejects_invalid_base_ref(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid git ref"):
+            _build_claude_allowed_tools("main --bad")
+
+    def test_claude_prompt_addendum_rejects_invalid_base_ref(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid git ref"):
+            _claude_prompt_addendum("main --bad")
 
 
 if __name__ == "__main__":

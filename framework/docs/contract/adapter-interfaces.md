@@ -16,7 +16,6 @@ All adapter operations MUST include:
 - `request_id`: unique request id
 - `scope_id`: issue/pr/scope identifier
 - `run_id`: execution id for artifact linkage
-- `created_at`: ISO-8601 timestamp
 
 All adapter errors MUST include:
 
@@ -57,7 +56,7 @@ Required output fields:
 - `status` (`approved|approved_with_nits|needs_changes|blocked|question`)
 - `findings[]` (normalized)
 - `summary`
-- `evidence` (`head_sha`, `base_sha`, `artifact_path`)
+- `evidence` (`head_sha`, `base_sha`, `artifact_path`, `created_at`)
 - `provider_metadata`
 
 Schema:

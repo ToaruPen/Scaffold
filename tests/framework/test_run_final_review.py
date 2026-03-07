@@ -87,10 +87,10 @@ def _run_runner_main(
 
     with (
         patch.object(runner.shared, "_parse_args", side_effect=runner.shared._parse_args),
-        patch.object(runner.shared, "_git_short_sha", side_effect=["abc1234", "def5678"]),
-        patch.object(runner.shared, "_run_engine", side_effect=fake_run_engine),
-        patch.object(runner.shared, "_validate_schema", return_value=None),
-        patch.object(runner.shared, "_run_gate", side_effect=fake_run_gate),
+        patch.object(runner.shared, "_resolve_review_range", return_value=("abc1234", "def5678")),
+        patch.object(runner, "_run_engine", side_effect=fake_run_engine),
+        patch.object(runner, "_validate_schema", return_value=None),
+        patch.object(runner, "_run_gate", side_effect=fake_run_gate),
         patch.object(runner, "run_drift_and_adr_gates", side_effect=fake_run_drift_and_adr_gates),
         patch.object(sys, "argv", argv),
     ):
@@ -156,6 +156,16 @@ class RunFinalReviewTests(unittest.TestCase):
             self.assertTrue((intermediate_dir / "drift-detection.input.json").exists())
             self.assertTrue((intermediate_dir / "adr-index.input.json").exists())
 
+            loaded_review = json.loads(
+                (output_dir / "final-review.json").read_text(encoding="utf-8")
+            )
+            evidence_input = json.loads(
+                (intermediate_dir / "review-evidence.input.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                evidence_input["artifact_path"], loaded_review["evidence"]["artifact_path"]
+            )
+
     def test_main_returns_nonzero_when_gate_fails(self) -> None:
         review_payload = {"status": "approved", "summary": "ok", "findings": []}
 
@@ -183,6 +193,48 @@ class RunFinalReviewTests(unittest.TestCase):
             )
 
             self.assertEqual(exit_code, 2)
+
+    def test_main_fail_fast_when_worktree_is_dirty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            argv = [
+                "run_final_review.py",
+                "--engine",
+                "codex",
+                "--scope-id",
+                "issue-12",
+                "--run-id",
+                "run-final-review-dirty",
+                "--base-ref",
+                "main",
+                "--prompt-template",
+                str(PROMPT_TEMPLATE),
+            ]
+
+            with (
+                patch.object(
+                    self.runner.shared, "_parse_args", side_effect=self.runner.shared._parse_args
+                ),
+                patch.object(
+                    self.runner.shared,
+                    "_resolve_review_range",
+                    side_effect=ValueError(
+                        "review-cycle requires a clean working tree; "
+                        "commit or stash changes before running review"
+                    ),
+                ),
+                patch.object(self.runner, "_run_engine") as run_engine_mock,
+                patch.object(sys, "argv", argv),
+            ):
+                old_cwd = Path.cwd()
+                os.chdir(tmp_path)
+                try:
+                    exit_code = self.runner.main()
+                finally:
+                    os.chdir(old_cwd)
+
+            self.assertEqual(exit_code, 2)
+            run_engine_mock.assert_not_called()
 
 
 if __name__ == "__main__":

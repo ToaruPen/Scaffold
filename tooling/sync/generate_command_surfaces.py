@@ -5,12 +5,17 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any
 
-import yaml
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from tooling.sync.lib.command_surface_loader import (  # noqa: E402
+    CommandSurfaceLoadError,
+    load_command_catalog,
+)
 
 _AGENTS = ("codex", "claude", "opencode")
-_ALLOWED_TIERS = {"core", "conditional"}
 
 
 def _parse_args() -> argparse.Namespace:
@@ -44,59 +49,6 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _require_mapping(parent: dict[str, Any], key: str) -> dict[str, Any]:
-    value = parent.get(key)
-    if not isinstance(value, dict):
-        raise ValueError(f"{key} must be a mapping")
-    return value
-
-
-def _load_manifest(manifest_path: Path) -> dict[str, Any]:
-    try:
-        data = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise ValueError(f"failed to read manifest: {exc}") from exc
-    except yaml.YAMLError as exc:
-        raise ValueError(f"failed to parse manifest YAML: {exc}") from exc
-    if not isinstance(data, dict):
-        raise ValueError("manifest root must be a mapping")
-    return data
-
-
-def _extract_tiers(manifest: dict[str, Any]) -> tuple[list[str], list[str]]:
-    must_command_contracts = _require_mapping(manifest, "must_command_contracts")
-    command_tiers = _require_mapping(manifest, "command_tiers")
-    command_keys_str = {str(command) for command in command_tiers}
-
-    invalid_must_commands = sorted(
-        str(command) for command in must_command_contracts if not isinstance(command, str)
-    )
-    if invalid_must_commands:
-        details = ", ".join(invalid_must_commands)
-        raise ValueError(f"must_command_contracts contains invalid entries: {details}")
-
-    invalid_tiers = sorted(
-        str(command)
-        for command, tier in command_tiers.items()
-        if not isinstance(command, str) or tier not in _ALLOWED_TIERS
-    )
-    if invalid_tiers:
-        details = ", ".join(invalid_tiers)
-        raise ValueError(f"command_tiers contains invalid entries: {details}")
-
-    must_command_keys = set(must_command_contracts)
-    missing = sorted(command for command in must_command_keys if command not in command_keys_str)
-    if missing:
-        details = ", ".join(missing)
-        raise ValueError(f"must_command_contracts missing tier classification: {details}")
-
-    core = sorted(command for command, tier in command_tiers.items() if tier == "core")
-    conditional = sorted(
-        command for command, tier in command_tiers.items() if tier == "conditional"
-    )
-    return core, conditional
-
-
 def _target_agents(agent: str) -> tuple[str, ...]:
     if agent == "all":
         return _AGENTS
@@ -111,15 +63,16 @@ def _default_output_root(*, include_conditional: bool) -> Path:
 def _build_surface(
     *,
     agent: str,
-    manifest_path: Path,
-    core: list[str],
-    conditional: list[str],
+    manifest_path: str,
+    tiers: dict[str, list[str]],
     include_conditional: bool,
-) -> dict[str, Any]:
+) -> dict[str, object]:
+    core = list(tiers["core"])
+    conditional = list(tiers["conditional"])
     commands = core + (conditional if include_conditional else [])
     return {
         "agent": agent,
-        "source_manifest": str(manifest_path),
+        "source_manifest": manifest_path,
         "policy": {
             "core_always_enabled": True,
             "conditional_enabled": include_conditional,
@@ -134,7 +87,7 @@ def _build_surface(
 
 def main() -> int:
     args = _parse_args()
-    manifest_path = Path(args.manifest)
+    runtime_root = Path.cwd()
     output_root = (
         Path(args.output_root)
         if args.output_root is not None
@@ -142,16 +95,18 @@ def main() -> int:
     )
 
     try:
-        manifest = _load_manifest(manifest_path)
-        core, conditional = _extract_tiers(manifest)
-
+        catalog = load_command_catalog(
+            runtime_root,
+            args.manifest,
+            require_metadata=False,
+            require_contracts=False,
+        )
         output_root.mkdir(parents=True, exist_ok=True)
         for agent in _target_agents(args.agent):
             payload = _build_surface(
                 agent=agent,
-                manifest_path=manifest_path,
-                core=core,
-                conditional=conditional,
+                manifest_path=catalog["manifest_path"],
+                tiers=catalog["tiers"],
                 include_conditional=args.enable_conditional,
             )
             output_path = output_root / f"{agent}.commands.json"
@@ -160,7 +115,7 @@ def main() -> int:
             )
             print(output_path)
         return 0
-    except (ValueError, OSError) as exc:
+    except (CommandSurfaceLoadError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 

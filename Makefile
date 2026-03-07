@@ -1,4 +1,4 @@
-.PHONY: all clean install-dev lint lint-shell format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range command-surfaces command-surfaces-conditional agent-rules
+.PHONY: all clean install-dev lint lint-shell format format-check typecheck schema-check test verify pre-commit commitlint-check commitlint-range command-surfaces command-surfaces-conditional command-exports-markdown command-exports-markdown-conditional agent-rules
 
 VENV_DIR ?= .venv
 VENV_BIN ?= $(VENV_DIR)/bin
@@ -24,7 +24,7 @@ install-dev:
 	$(PYTHON) -m pip install -r requirements-dev.txt
 
 lint:
-	$(RUFF) check framework tests
+	$(RUFF) check framework tests tooling/sync tests/tooling
 
 lint-shell:
 	@if [ -n "$(strip $(SHELL_FILES))" ]; then \
@@ -34,13 +34,13 @@ lint-shell:
 	fi
 
 format:
-	$(RUFF) format framework tests
+	$(RUFF) format framework tests tooling/sync tests/tooling
 
 format-check:
-	$(RUFF) format --check framework tests
+	$(RUFF) format --check framework tests tooling/sync tests/tooling
 
 typecheck:
-	$(MYPY) --config-file pyproject.toml
+	$(MYPY) --config-file pyproject.toml framework tests tooling/sync
 
 schema-check:
 	$(CHECK_JSONSCHEMA) --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json
@@ -56,6 +56,12 @@ command-surfaces:
 
 command-surfaces-conditional:
 	$(PYTHON) tooling/sync/generate_command_surfaces.py --output-root tooling/sync/generated/with-conditional --agent all --enable-conditional
+
+command-exports-markdown:
+	$(PYTHON) tooling/sync/generate_markdown_command_exports.py --agent all --enable-conditional --write-active-surfaces --sync-preview-snapshot
+
+command-exports-markdown-conditional:
+	$(PYTHON) tooling/sync/generate_markdown_command_exports.py --agent all --enable-conditional
 
 agent-rules:
 	$(PYTHON) tooling/sync/generate_agent_rules.py

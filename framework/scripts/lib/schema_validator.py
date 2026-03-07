@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Protocol
 
@@ -27,8 +29,23 @@ def validate_schema_file(
     timeout_sec: int = 60,
     command_runner: SchemaCommandRunner = ci_helpers.run_command,
 ) -> None:
+    executable = shutil.which("check-jsonschema")
+    if executable is None:
+        candidates = (
+            [
+                repo_root / ".venv/Scripts/check-jsonschema.exe",
+                repo_root / ".venv/Scripts/check-jsonschema",
+            ]
+            if sys.platform.startswith("win")
+            else [
+                repo_root / ".venv/bin/check-jsonschema",
+                repo_root / ".venv/bin/check-jsonschema.exe",
+            ]
+        )
+        local_executable = next((path for path in candidates if path.is_file()), None)
+        executable = str(local_executable) if local_executable is not None else "check-jsonschema"
     result = command_runner(
-        ["check-jsonschema", "--schemafile", str(schema_path), str(target_path)],
+        [executable, "--schemafile", str(schema_path), str(target_path)],
         cwd=repo_root,
         timeout_sec=timeout_sec,
     )

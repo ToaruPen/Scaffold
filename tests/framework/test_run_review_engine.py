@@ -98,6 +98,7 @@ class RunReviewEngineTests(unittest.TestCase):
 
             with (
                 patch.object(self.runner, "_git_short_sha", side_effect=["abc1234", "def5678"]),
+                patch.object(self.runner, "_git_has_worktree_changes", return_value=False),
                 patch.object(self.runner, "_run_engine", side_effect=fake_run_engine),
                 patch.object(self.runner, "_validate_schema", return_value=None),
                 patch.object(self.runner, "_run_gate", side_effect=fake_run_gate),
@@ -186,6 +187,7 @@ class RunReviewEngineTests(unittest.TestCase):
             ]
             with (
                 patch.object(self.runner, "_git_short_sha", side_effect=["abc1234", "def5678"]),
+                patch.object(self.runner, "_git_has_worktree_changes", return_value=False),
                 patch.object(self.runner, "_run_engine", side_effect=fake_run_engine),
                 patch.object(self.runner, "_validate_schema", return_value=None),
                 patch.object(self.runner, "_run_gate", side_effect=fake_run_gate),
@@ -221,6 +223,7 @@ class RunReviewEngineTests(unittest.TestCase):
 
             with (
                 patch.object(self.runner, "_git_short_sha", side_effect=["abc1234", "def5678"]),
+                patch.object(self.runner, "_git_has_worktree_changes", return_value=False),
                 patch.object(self.runner, "_run_engine", side_effect=RuntimeError("engine boom")),
                 patch.object(sys, "argv", argv),
             ):
@@ -301,6 +304,38 @@ class RunReviewEngineTests(unittest.TestCase):
                     os.chdir(old_cwd)
 
             self.assertEqual(base_fail_exit, 2)
+
+    def test_main_fail_fast_when_worktree_is_dirty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            argv = [
+                "run_review_engine.py",
+                "--engine",
+                "codex",
+                "--scope-id",
+                "issue-15",
+                "--run-id",
+                "run-test-dirty-worktree",
+                "--base-ref",
+                "main",
+                "--prompt-template",
+                str(PROMPT_TEMPLATE),
+            ]
+
+            with (
+                patch.object(self.runner, "_git_short_sha", side_effect=["abc1234", "def5678"]),
+                patch.object(self.runner, "_git_has_worktree_changes", return_value=True),
+                patch.object(self.runner, "_run_engine") as run_engine,
+                patch.object(sys, "argv", argv),
+            ):
+                old_cwd = Path.cwd()
+                os.chdir(tmp)
+                try:
+                    exit_code = self.runner.main()
+                finally:
+                    os.chdir(old_cwd)
+
+            self.assertEqual(exit_code, 2)
+            run_engine.assert_not_called()
 
 
 if __name__ == "__main__":

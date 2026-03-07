@@ -104,6 +104,11 @@ python3 -m pip install -r framework/requirements-dev.txt
 - Ensure the repository has commits.
 - Ensure `--base-ref` exists locally (for example `origin/main`).
 
+### Review runner refuses dirty working tree
+
+- `review-cycle` evidence is linked to commit/range, so commit or stash local changes first.
+- Re-run the runner after the working tree is clean.
+
 ## Release Checklist
 
 - `make verify` passes

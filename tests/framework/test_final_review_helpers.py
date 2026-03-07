@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import unittest
 
-from framework.scripts.ci import run_review_engine as shared
 from framework.scripts.lib import final_review_helpers
+from framework.scripts.lib.paths_metadata import ReviewContext
 
 
-def _context() -> shared.ReviewContext:
-    return shared.ReviewContext(
+def _context() -> ReviewContext:
+    return ReviewContext(
         request_id="req-1",
         scope_id="issue-1",
         run_id="run-1",

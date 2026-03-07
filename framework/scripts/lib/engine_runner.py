@@ -7,7 +7,7 @@ from typing import Any
 
 from framework.scripts.lib.ci_helpers import run_command as _ci_run_command
 from framework.scripts.lib.ci_helpers import write_json as _ci_write_json
-from framework.scripts.lib.git_ref import validate_git_ref
+from framework.scripts.lib.git_ref import quote_git_ref_for_shell, validate_git_ref
 from framework.scripts.lib.paths_metadata import ReviewContext, RunnerConfig
 from framework.scripts.lib.schema_validator import validate_schema_file as _validate_schema_file
 
@@ -137,7 +137,7 @@ def _extend_claude_flag(command: list[str], flag: str, values: list[str]) -> Non
 
 
 def _build_claude_allowed_tools(base_ref: str) -> list[str]:
-    safe_base_ref = validate_git_ref(base_ref)
+    safe_base_ref = quote_git_ref_for_shell(base_ref)
     return [
         "Read",
         "Glob",

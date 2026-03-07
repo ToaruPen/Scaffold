@@ -124,6 +124,14 @@ class EngineRunnerTests(unittest.TestCase):
             tools,
         )
 
+    def test_build_claude_allowed_tools_quotes_valid_shell_metachar_refs(self) -> None:
+        tools = _build_claude_allowed_tools("feature$(echo)")
+
+        self.assertIn(
+            f"Bash({_CLAUDE_READONLY_REVIEW_SHELL} git-diff 'feature$(echo)')",
+            tools,
+        )
+
     def test_build_claude_allowed_tools_rejects_invalid_base_ref(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid git ref"):
             _build_claude_allowed_tools("main --bad")

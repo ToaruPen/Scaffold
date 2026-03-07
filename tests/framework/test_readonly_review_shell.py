@@ -22,6 +22,10 @@ class ReadonlyReviewShellTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid git ref"):
             readonly_review_shell._command_for_action(["git-diff", "main --cached"])
 
+    def test_rejects_double_dot_git_ref(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid git ref"):
+            readonly_review_shell._command_for_action(["git-diff", "main..origin/main"])
+
     def test_rejects_unknown_action(self) -> None:
         with self.assertRaisesRegex(ValueError, "unsupported action"):
             readonly_review_shell._command_for_action(["git-push"])

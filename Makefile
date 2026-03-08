@@ -24,7 +24,7 @@ install-dev:
 	$(PYTHON) -m pip install -r requirements-dev.txt
 
 lint:
-	$(RUFF) check framework tests tooling/sync tests/tooling
+	$(RUFF) check framework tests tooling/sync tooling/install tooling/migrate tests/tooling
 
 lint-shell:
 	@if [ -n "$(strip $(SHELL_FILES))" ]; then \
@@ -34,13 +34,13 @@ lint-shell:
 	fi
 
 format:
-	$(RUFF) format framework tests tooling/sync tests/tooling
+	$(RUFF) format framework tests tooling/sync tooling/install tooling/migrate tests/tooling
 
 format-check:
-	$(RUFF) format --check framework tests tooling/sync tests/tooling
+	$(RUFF) format --check framework tests tooling/sync tooling/install tooling/migrate tests/tooling
 
 typecheck:
-	$(MYPY) --config-file pyproject.toml framework tests tooling/sync
+	$(MYPY) --config-file pyproject.toml framework tests tooling/sync tooling/install tooling/migrate
 
 schema-check:
 	$(CHECK_JSONSCHEMA) --schemafile https://json-schema.org/draft/2020-12/schema framework/.agent/schemas/*/*.json

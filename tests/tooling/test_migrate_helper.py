@@ -1,0 +1,225 @@
+"""Tests for the Scaffold migration helper and its library modules."""
+
+from __future__ import annotations
+
+import contextlib
+import importlib.util
+import io
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from types import ModuleType
+from unittest.mock import patch
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_PATH = REPO_ROOT / "tooling/migrate/migrate_helper.py"
+
+sys.path.insert(0, str(REPO_ROOT))
+
+from tooling.migrate.lib.conflict_detector import ConflictResult, detect_conflicts  # noqa: E402
+from tooling.migrate.lib.path_mapper import MappingResult, find_mappable_files  # noqa: E402
+from tooling.migrate.lib.report_formatter import format_report  # noqa: E402
+
+
+def _load_script_module() -> ModuleType:
+    """Load migrate_helper.py dynamically for CLI entry-point tests."""
+    spec = importlib.util.spec_from_file_location("migrate_helper_module", SCRIPT_PATH)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+class PathMapperTests(unittest.TestCase):
+    """Test suite for path mapping behavior."""
+
+    def test_find_mappable_files_empty_repo(self) -> None:
+        """Return no mappings when repository has no files."""
+        with tempfile.TemporaryDirectory() as tmp:
+            result = find_mappable_files(Path(tmp))
+            self.assertEqual(result, [])
+
+    def test_find_mappable_files_with_old_patterns(self) -> None:
+        """Map a known scripts/gates file to framework scripts equivalent."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            gate_dir = tmp_path / "scripts" / "gates"
+            gate_dir.mkdir(parents=True)
+            (gate_dir / "validate_foo.py").write_text("# gate\n", encoding="utf-8")
+
+            result = find_mappable_files(tmp_path)
+            self.assertEqual(len(result), 1)
+            self.assertIsInstance(result[0], MappingResult)
+            self.assertEqual(result[0].old_path, "scripts/gates/validate_foo.py")
+            self.assertEqual(result[0].new_path, "framework/scripts/gates/validate_foo.py")
+            self.assertEqual(result[0].action, "migrate")
+
+    def test_find_mappable_files_nested_subdirectory(self) -> None:
+        """Preserve nested relative path when resolving a mapped file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            nested_gate_dir = tmp_path / "scripts" / "gates" / "sub"
+            nested_gate_dir.mkdir(parents=True)
+            (nested_gate_dir / "validate.py").write_text("# gate\n", encoding="utf-8")
+
+            result = find_mappable_files(tmp_path)
+            self.assertEqual(len(result), 1)
+            self.assertIsInstance(result[0], MappingResult)
+            self.assertEqual(result[0].old_path, "scripts/gates/sub/validate.py")
+            self.assertEqual(result[0].new_path, "framework/scripts/gates/sub/validate.py")
+            self.assertEqual(result[0].action, "migrate")
+
+
+class ConflictDetectorTests(unittest.TestCase):
+    """Test suite for conflict detection behavior."""
+
+    def test_detect_conflicts_clean(self) -> None:
+        """Detect no conflicts for disjoint target and framework files."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            target = tmp_path / "target"
+            framework = tmp_path / "framework"
+            target.mkdir()
+            framework.mkdir()
+            (target / "app.py").write_text("# app\n", encoding="utf-8")
+            (framework / "lib.py").write_text("# lib\n", encoding="utf-8")
+
+            result = detect_conflicts(target, framework)
+            self.assertEqual(result, [])
+
+    def test_detect_conflicts_with_collisions(self) -> None:
+        """Detect a file path overlap as file_exists conflict."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            target = tmp_path / "target"
+            framework = tmp_path / "framework"
+            target.mkdir()
+            framework.mkdir()
+            (target / "README.md").write_text("# target\n", encoding="utf-8")
+            (framework / "README.md").write_text("# framework\n", encoding="utf-8")
+
+            result = detect_conflicts(target, framework)
+            self.assertEqual(len(result), 1)
+            self.assertIsInstance(result[0], ConflictResult)
+            self.assertEqual(result[0].path, "README.md")
+            self.assertEqual(result[0].conflict_type, "file_exists")
+
+
+class ReportFormatterTests(unittest.TestCase):
+    """Test suite for report formatting helpers."""
+
+    def test_format_report_empty(self) -> None:
+        """Render an empty-report output with no mappings/conflicts."""
+        report = format_report([], [])
+        self.assertIn("No mappable files found.", report)
+        self.assertIn("No conflicts found.", report)
+        self.assertIn("No manual fixes required.", report)
+
+    def test_format_report_with_data(self) -> None:
+        """Render report sections when mappings and conflicts exist."""
+        mappings = [
+            MappingResult(
+                "scripts/gates/check.py",
+                "framework/scripts/gates/check.py",
+                "migrate",
+            ),
+        ]
+        conflicts = [
+            ConflictResult(
+                "README.md",
+                "file_exists",
+                "Target already has file at framework path: README.md",
+            ),
+        ]
+        report = format_report(mappings, conflicts)
+        self.assertIn("## Summary", report)
+        self.assertIn("## File Mappings", report)
+        self.assertIn("## Conflicts", report)
+        self.assertIn("## Required Manual Fixes", report)
+        self.assertIn("scripts/gates/check.py", report)
+        self.assertIn("README.md", report)
+        self.assertIn("Required manual fixes:   1", report)
+
+
+class MigrateHelperCLITests(unittest.TestCase):
+    """Test suite for migrate_helper CLI behavior."""
+
+    script: ModuleType
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Load migrate_helper module for all CLI test methods."""
+        cls.script = _load_script_module()
+
+    def test_cli_help(self) -> None:
+        """Show argparse usage when --help is requested."""
+        with patch.object(sys, "argv", ["migrate_helper.py", "--help"]):
+            stdout = io.StringIO()
+            with (
+                contextlib.redirect_stdout(stdout),
+                self.assertRaises(SystemExit) as cm,
+            ):
+                self.script.main()
+            self.assertEqual(cm.exception.code, 0)
+            self.assertIn("usage:", stdout.getvalue().lower())
+
+    def test_cli_output_file(self) -> None:
+        """Write migration report to the provided output file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            target = tmp_path / "target"
+            target.mkdir()
+            scaffold = tmp_path / "scaffold"
+            scaffold.mkdir()
+            (scaffold / "framework").mkdir()
+            output_file = tmp_path / "report.txt"
+
+            argv = [
+                "migrate_helper.py",
+                "--target-repo",
+                str(target),
+                "--scaffold-repo",
+                str(scaffold),
+                "--output",
+                str(output_file),
+            ]
+
+            with patch.object(sys, "argv", argv):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    exit_code = self.script.main()
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(output_file.exists())
+            content = output_file.read_text(encoding="utf-8")
+            self.assertIn("Migration Analysis Report", content)
+
+    def test_cli_nonexistent_repo(self) -> None:
+        """Return an error exit code when target repo path is missing."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            scaffold = tmp_path / "scaffold"
+            scaffold.mkdir()
+            (scaffold / "framework").mkdir()
+
+            argv = [
+                "migrate_helper.py",
+                "--target-repo",
+                "/nonexistent_scaffold_test_path",
+                "--scaffold-repo",
+                str(scaffold),
+            ]
+
+            with patch.object(sys, "argv", argv):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    exit_code = self.script.main()
+
+            self.assertEqual(exit_code, 2)
+            self.assertIn("does not exist", stderr.getvalue())
+
+
+if __name__ == "__main__":
+    unittest.main()

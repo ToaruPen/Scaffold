@@ -49,6 +49,20 @@ class PathMapperTests(unittest.TestCase):
             self.assertEqual(result[0].new_path, "framework/scripts/gates/validate_foo.py")
             self.assertEqual(result[0].action, "migrate")
 
+    def test_find_mappable_files_nested_subdirectory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            nested_gate_dir = tmp_path / "scripts" / "gates" / "sub"
+            nested_gate_dir.mkdir(parents=True)
+            (nested_gate_dir / "validate.py").write_text("# gate\n", encoding="utf-8")
+
+            result = find_mappable_files(tmp_path)
+            self.assertEqual(len(result), 1)
+            self.assertIsInstance(result[0], MappingResult)
+            self.assertEqual(result[0].old_path, "scripts/gates/sub/validate.py")
+            self.assertEqual(result[0].new_path, "framework/scripts/gates/sub/validate.py")
+            self.assertEqual(result[0].action, "migrate")
+
 
 class ConflictDetectorTests(unittest.TestCase):
     def test_detect_conflicts_clean(self) -> None:
@@ -110,6 +124,7 @@ class ReportFormatterTests(unittest.TestCase):
         self.assertIn("## Required Manual Fixes", report)
         self.assertIn("scripts/gates/check.py", report)
         self.assertIn("README.md", report)
+        self.assertIn("Required manual fixes:   1", report)
 
 
 class MigrateHelperCLITests(unittest.TestCase):

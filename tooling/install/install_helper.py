@@ -73,7 +73,9 @@ def _run_subtree_add(
         "--squash",
     ]
     print(f"Running: {' '.join(cmd)}")
-    result = subprocess.run(cmd, check=False, cwd=target_repo)
+    result = subprocess.run(cmd, check=False, cwd=target_repo, capture_output=True, text=True)
+    if result.returncode != 0 and result.stderr:
+        print(result.stderr, file=sys.stderr)
     return result.returncode
 
 
@@ -98,12 +100,13 @@ def _parse_args() -> argparse.Namespace:
         default=".scaffold",
         help="Subtree prefix in the target repo (default: .scaffold)",
     )
-    parser.add_argument(
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
         "--dry-run",
         action="store_true",
         help="Show the installation plan without executing",
     )
-    parser.add_argument(
+    mode_group.add_argument(
         "--execute",
         action="store_true",
         help="Execute the git subtree add operation",
@@ -121,6 +124,9 @@ def main() -> int:
     if not target_repo.is_dir():
         print(f"error: target repo does not exist: {target_repo}", file=sys.stderr)
         return 2
+    if not scaffold_repo.is_dir():
+        print(f"error: scaffold repo does not exist: {scaffold_repo}", file=sys.stderr)
+        return 2
 
     results = run_all_checks(target_repo)
     failures = [r for r in results if not r.passed]
@@ -136,12 +142,11 @@ def main() -> int:
     _print_plan(target_repo, scaffold_repo, prefix, framework_items)
     print()
 
-    if args.dry_run:
-        print("Dry run complete. No changes made.")
-        return 0
-
-    if not args.execute:
-        print("To proceed, add --execute to run the installation.")
+    if args.dry_run or not args.execute:
+        if args.dry_run:
+            print("Dry run complete. No changes made.")
+        else:
+            print("To proceed, add --execute to run the installation.")
         return 0
 
     rc = _run_subtree_add(target_repo, scaffold_repo, prefix)

@@ -86,6 +86,13 @@ def check_clean_working_tree(target_path: Path) -> PrecheckResult:
     check_name = "clean_working_tree"
 
     resolved = target_path.resolve()
+    if not resolved.is_dir():
+        return PrecheckResult(
+            check_name=check_name,
+            passed=False,
+            message=f"Target path does not exist or is not a directory: {resolved}",
+        )
+
     result = subprocess.run(
         ["git", "status", "--porcelain"],
         capture_output=True,

@@ -70,8 +70,9 @@ def _resolve_action(pattern: str) -> str:
 
 def _resolve_new_path(pattern: str, framework_prefix: str, relative: str) -> str:
     if framework_prefix.endswith("/"):
-        filename = Path(relative).name
-        return framework_prefix + filename
+        source_prefix = pattern.split("*", 1)[0]
+        relative_suffix = relative.removeprefix(source_prefix)
+        return framework_prefix + relative_suffix
     return framework_prefix
 
 

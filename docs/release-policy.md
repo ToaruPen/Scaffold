@@ -13,7 +13,7 @@ Scaffold follows [Semantic Versioning](https://semver.org/).
 
 Not all parts of the repository carry the same stability guarantee.
 
-**In scope** — stable across minor versions within the same major:
+**In scope** (v1.0+ only) — stable across minor versions within the same major:
 
 - `framework/docs/contract/` — workflow contracts
 - `framework/scripts/manifest.yaml` — gate manifest schema
@@ -24,6 +24,8 @@ Not all parts of the repository carry the same stability guarantee.
 - `tooling/` internals
 - `docs/` (repository-level docs, not contract docs)
 - Generated files (command surfaces, agent rules)
+
+> **Note**: During the v0.x phase, all parts of the repository may change without notice.
 
 ## Consumer Update Guidelines
 

@@ -42,7 +42,7 @@ Adopt Scaffold into an existing repository in about 5-10 minutes. You need Pytho
 1. **Clone Scaffold** (or add it as a remote in an existing clone):
 
    ```bash
-   git clone https://github.com/your-org/Scaffold.git
+   git clone <scaffold-repository-url>
    cd Scaffold
    ```
 
@@ -62,8 +62,11 @@ Adopt Scaffold into an existing repository in about 5-10 minutes. You need Pytho
 
    ```bash
    cd /path/to/your-repo
-   make verify
+   ls .scaffold/                  # confirm framework payload is present
+   cat .scaffold/scripts/manifest.yaml  # confirm gate manifest exists
    ```
+
+   Note: only `framework/` is synced via `git subtree add`. The consumer repo must provide its own `Makefile` or run the framework-provided gate scripts directly.
 
 That's it. Your repo now has the `framework/` payload synced under `.scaffold/` and the gate contracts in place.
 

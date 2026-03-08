@@ -39,7 +39,7 @@ def _format_summary(
     mappings: list[MappingResult],
     conflicts: list[ConflictResult],
 ) -> str:
-    manual_count = sum(1 for m in mappings if m.action == "manual")
+    manual_count = sum(1 for m in mappings if m.action in {"manual", "review"}) + len(conflicts)
     lines = [
         "",
         "## Summary",

@@ -1,1 +1,2 @@
-helper = lambda: True
+def helper() -> bool:
+    return True

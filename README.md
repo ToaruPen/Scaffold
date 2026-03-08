@@ -60,3 +60,14 @@ CI workflow:
 
 - `.github/workflows/quality.yml` runs `make verify` on push/PR.
 - The same workflow runs commitlint on commit ranges (PR base/head or push before/after).
+
+## License
+
+Scaffold is distributed under the MIT License. You may freely use, modify, and redistribute it in your projects. See `LICENSE` for details.
+
+Reuse policy: vendor/subtree sync is the recommended adoption method.
+
+- You may vendor or subtree-sync the repository into downstream projects.
+- Modifications are allowed under the same license terms.
+- Redistribution is allowed, including in third-party projects.
+- Keep the copyright notice and permission text intact in copied/reused artifacts.

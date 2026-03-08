@@ -35,6 +35,10 @@ Scaffold is a source repository for a reusable AI-assisted development framework
 - Use `git subtree` for existing repositories (simple operations, no submodule UX cost).
 - Use a split branch from `framework/` as the stable upstream for consumers.
 
+## Release Policy
+
+See [docs/release-policy.md](docs/release-policy.md) for versioning, compatibility scope, and update guidelines.
+
 ## Quality Baseline
 
 - Install dev tools into `.venv`: `make install-dev`

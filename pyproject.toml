@@ -46,6 +46,8 @@ max-complexity = 10
 "framework/scripts/lib/vcs_stub.py" = ["E402"]
 "framework/scripts/lib/bot_stub.py" = ["E402"]
 "framework/scripts/lib/review_engine_stub.py" = ["E402"]
+"tooling/install/*.py" = ["E402"]
+"tooling/migrate/*.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -55,6 +57,8 @@ files = [
   "framework/scripts/ci",
   "tests/framework",
   "tooling/sync",
+  "tooling/install",
+  "tooling/migrate",
   "tests/tooling",
 ]
 strict = true

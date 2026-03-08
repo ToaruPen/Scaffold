@@ -1,3 +1,5 @@
+"""Tests for the Scaffold migration helper and its library modules."""
+
 from __future__ import annotations
 
 import contextlib
@@ -21,6 +23,7 @@ from tooling.migrate.lib.report_formatter import format_report  # noqa: E402
 
 
 def _load_script_module() -> ModuleType:
+    """Load migrate_helper.py dynamically for CLI entry-point tests."""
     spec = importlib.util.spec_from_file_location("migrate_helper_module", SCRIPT_PATH)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
@@ -30,12 +33,16 @@ def _load_script_module() -> ModuleType:
 
 
 class PathMapperTests(unittest.TestCase):
+    """Test suite for path mapping behavior."""
+
     def test_find_mappable_files_empty_repo(self) -> None:
+        """Return no mappings when repository has no files."""
         with tempfile.TemporaryDirectory() as tmp:
             result = find_mappable_files(Path(tmp))
             self.assertEqual(result, [])
 
     def test_find_mappable_files_with_old_patterns(self) -> None:
+        """Map a known scripts/gates file to framework scripts equivalent."""
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             gate_dir = tmp_path / "scripts" / "gates"
@@ -50,6 +57,7 @@ class PathMapperTests(unittest.TestCase):
             self.assertEqual(result[0].action, "migrate")
 
     def test_find_mappable_files_nested_subdirectory(self) -> None:
+        """Preserve nested relative path when resolving a mapped file."""
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             nested_gate_dir = tmp_path / "scripts" / "gates" / "sub"
@@ -65,7 +73,10 @@ class PathMapperTests(unittest.TestCase):
 
 
 class ConflictDetectorTests(unittest.TestCase):
+    """Test suite for conflict detection behavior."""
+
     def test_detect_conflicts_clean(self) -> None:
+        """Detect no conflicts for disjoint target and framework files."""
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             target = tmp_path / "target"
@@ -79,6 +90,7 @@ class ConflictDetectorTests(unittest.TestCase):
             self.assertEqual(result, [])
 
     def test_detect_conflicts_with_collisions(self) -> None:
+        """Detect a file path overlap as file_exists conflict."""
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             target = tmp_path / "target"
@@ -96,13 +108,17 @@ class ConflictDetectorTests(unittest.TestCase):
 
 
 class ReportFormatterTests(unittest.TestCase):
+    """Test suite for report formatting helpers."""
+
     def test_format_report_empty(self) -> None:
+        """Render an empty-report output with no mappings/conflicts."""
         report = format_report([], [])
         self.assertIn("No mappable files found.", report)
         self.assertIn("No conflicts found.", report)
         self.assertIn("No manual fixes required.", report)
 
     def test_format_report_with_data(self) -> None:
+        """Render report sections when mappings and conflicts exist."""
         mappings = [
             MappingResult(
                 "scripts/gates/check.py",
@@ -128,13 +144,17 @@ class ReportFormatterTests(unittest.TestCase):
 
 
 class MigrateHelperCLITests(unittest.TestCase):
+    """Test suite for migrate_helper CLI behavior."""
+
     script: ModuleType
 
     @classmethod
     def setUpClass(cls) -> None:
+        """Load migrate_helper module for all CLI test methods."""
         cls.script = _load_script_module()
 
     def test_cli_help(self) -> None:
+        """Show argparse usage when --help is requested."""
         with patch.object(sys, "argv", ["migrate_helper.py", "--help"]):
             stdout = io.StringIO()
             with (
@@ -146,6 +166,7 @@ class MigrateHelperCLITests(unittest.TestCase):
             self.assertIn("usage:", stdout.getvalue().lower())
 
     def test_cli_output_file(self) -> None:
+        """Write migration report to the provided output file."""
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             target = tmp_path / "target"
@@ -176,6 +197,7 @@ class MigrateHelperCLITests(unittest.TestCase):
             self.assertIn("Migration Analysis Report", content)
 
     def test_cli_nonexistent_repo(self) -> None:
+        """Return an error exit code when target repo path is missing."""
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             scaffold = tmp_path / "scaffold"

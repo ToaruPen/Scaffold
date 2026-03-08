@@ -1,3 +1,5 @@
+"""Map existing repository files to their Scaffold framework equivalents."""
+
 from __future__ import annotations
 
 import fnmatch
@@ -13,6 +15,8 @@ __all__ = [
 
 
 class MappingResult(NamedTuple):
+    """Represent one detected migration mapping candidate."""
+
     old_path: str
     new_path: str
     action: str
@@ -61,6 +65,7 @@ _REVIEW_PATTERNS: frozenset[str] = frozenset(
 
 
 def _resolve_action(pattern: str) -> str:
+    """Resolve the migration action for a known path pattern."""
     if pattern in _MIGRATE_PATTERNS:
         return "migrate"
     if pattern in _REVIEW_PATTERNS:
@@ -69,6 +74,7 @@ def _resolve_action(pattern: str) -> str:
 
 
 def _resolve_new_path(pattern: str, framework_prefix: str, relative: str) -> str:
+    """Build the destination path in the framework tree."""
     if framework_prefix.endswith("/"):
         source_prefix = pattern.split("*", 1)[0]
         relative_suffix = relative.removeprefix(source_prefix)

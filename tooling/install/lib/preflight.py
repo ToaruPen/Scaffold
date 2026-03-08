@@ -16,12 +16,15 @@ __all__ = [
 
 
 class PrecheckResult(NamedTuple):
+    """Named tuple with results for one preflight check."""
+
     check_name: str
     passed: bool
     message: str
 
 
 def check_is_git_repo(target_path: Path) -> PrecheckResult:
+    """Verify the target path is inside a valid git work tree."""
     check_name = "is_git_repo"
 
     resolved = target_path.resolve()
@@ -55,6 +58,7 @@ def check_is_git_repo(target_path: Path) -> PrecheckResult:
 
 
 def check_no_existing_scaffold(target_path: Path) -> PrecheckResult:
+    """Ensure no existing Scaffold directories already exist."""
     check_name = "no_existing_scaffold"
 
     resolved = target_path.resolve()
@@ -83,6 +87,7 @@ def check_no_existing_scaffold(target_path: Path) -> PrecheckResult:
 
 
 def check_clean_working_tree(target_path: Path) -> PrecheckResult:
+    """Verify the target repo has a clean git working tree."""
     check_name = "clean_working_tree"
 
     resolved = target_path.resolve()
@@ -124,6 +129,7 @@ def check_clean_working_tree(target_path: Path) -> PrecheckResult:
 
 
 def run_all_checks(target_path: Path) -> list[PrecheckResult]:
+    """Run all preflight checks and return ordered results."""
     return [
         check_is_git_repo(target_path),
         check_no_existing_scaffold(target_path),

@@ -17,6 +17,7 @@ from tooling.migrate.lib.report_formatter import format_report  # noqa: E402, RU
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for migration helper execution."""
     parser = argparse.ArgumentParser(
         description=(
             "Analyze a target repository for Scaffold migration readiness. "
@@ -50,6 +51,14 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _validate_target_repo(target: Path) -> str | None:
+    """Validate the target repository path.
+
+    Args:
+        target: Path provided by --target-repo.
+
+    Returns:
+        Error message when invalid, otherwise None.
+    """
     if not target.exists():
         return f"target repo does not exist: {target}"
     if not target.is_dir():
@@ -58,12 +67,21 @@ def _validate_target_repo(target: Path) -> str | None:
 
 
 def _resolve_scaffold_repo(raw: str | None) -> Path:
+    """Resolve scaffold repository root from CLI input.
+
+    Args:
+        raw: Optional --scaffold-repo argument.
+
+    Returns:
+        Explicit scaffold path or cwd when not provided.
+    """
     if raw is not None:
         return Path(raw).resolve()
     return Path.cwd()
 
 
 def _validate_scaffold_repo(scaffold: Path) -> str | None:
+    """Validate scaffold repo has framework/ directory required for migration."""
     framework = scaffold / "framework"
     if not framework.is_dir():
         return f"scaffold repo missing framework/ directory: {scaffold}"
@@ -71,6 +89,12 @@ def _validate_scaffold_repo(scaffold: Path) -> str | None:
 
 
 def _write_output(report: str, output_path: Path | None) -> None:
+    """Write report text to output destination.
+
+    Args:
+        report: Rendered migration report.
+        output_path: Optional file path; stdout when None.
+    """
     if output_path is None:
         sys.stdout.write(report)
         return
@@ -79,6 +103,7 @@ def _write_output(report: str, output_path: Path | None) -> None:
 
 
 def main() -> int:
+    """Run migration helper flow and return CLI exit status."""
     args = _parse_args()
 
     target_path = Path(args.target_repo).resolve()

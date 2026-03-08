@@ -1,3 +1,5 @@
+"""Format migration analysis results into a plain-text report."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -21,6 +23,7 @@ def format_report(
     mappings: list[MappingResult],
     conflicts: list[ConflictResult],
 ) -> str:
+    """Build the full migration report text from mappings and conflicts."""
     sections: list[str] = [
         _format_header(),
         _format_summary(mappings, conflicts),
@@ -32,6 +35,7 @@ def format_report(
 
 
 def _format_header() -> str:
+    """Return the static migration report header block."""
     return f"{_SEPARATOR}\nScaffold Migration Analysis Report\n{_SEPARATOR}"
 
 
@@ -39,6 +43,7 @@ def _format_summary(
     mappings: list[MappingResult],
     conflicts: list[ConflictResult],
 ) -> str:
+    """Build the summary section with counts from mappings and conflicts."""
     manual_count = sum(1 for m in mappings if m.action in {"manual", "review"}) + len(conflicts)
     lines = [
         "",
@@ -53,6 +58,7 @@ def _format_summary(
 
 
 def _format_mappings(mappings: list[MappingResult]) -> str:
+    """Build the file mappings section table."""
     lines = [_SEPARATOR, "## File Mappings", ""]
     if not mappings:
         lines.append("  No mappable files found.")
@@ -71,6 +77,7 @@ def _format_mappings(mappings: list[MappingResult]) -> str:
 
 
 def _format_conflicts(conflicts: list[ConflictResult]) -> str:
+    """Build the conflicts section describing each overlap."""
     lines = [_SEPARATOR, "## Conflicts", ""]
     if not conflicts:
         lines.append("  No conflicts found.")
@@ -89,6 +96,7 @@ def _format_manual_fixes(
     mappings: list[MappingResult],
     conflicts: list[ConflictResult],
 ) -> str:
+    """Build the manual fixes section from pending actions."""
     lines = [_SEPARATOR, "## Required Manual Fixes", ""]
     fix_items: list[str] = []
 

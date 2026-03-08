@@ -27,6 +27,7 @@ def _print_plan(
     prefix: str,
     framework_items: list[str],
 ) -> None:
+    """Print the installation plan details to stdout."""
     print("Installation plan")
     print(f"  Target repo   : {target_repo}")
     print(f"  Scaffold repo : {scaffold_repo}")
@@ -41,6 +42,7 @@ def _print_plan(
 
 
 def _list_framework_contents(scaffold_repo: Path) -> list[str]:
+    """Return top-level files and directories under framework."""
     framework_dir = scaffold_repo / "framework"
     if not framework_dir.is_dir():
         return []
@@ -52,6 +54,7 @@ def _list_framework_contents(scaffold_repo: Path) -> list[str]:
 
 
 def _print_failures(results: list[PrecheckResult]) -> None:
+    """Print failed preflight check results to stderr."""
     for result in results:
         if not result.passed:
             print(f"FAIL  {result.check_name}: {result.message}", file=sys.stderr)
@@ -62,6 +65,7 @@ def _run_subtree_add(
     scaffold_repo: Path,
     prefix: str,
 ) -> int:
+    """Run ``git subtree add`` and return the subprocess exit status."""
     remote = str(scaffold_repo.resolve())
     cmd = [
         "git",
@@ -80,6 +84,7 @@ def _run_subtree_add(
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for install_helper."""
     parser = argparse.ArgumentParser(
         description="Bootstrap Scaffold into a target repository via git subtree",
     )
@@ -115,6 +120,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    """Run install_helper CLI flow and return an exit code."""
     args = _parse_args()
 
     target_repo: Path = args.target_repo.resolve()

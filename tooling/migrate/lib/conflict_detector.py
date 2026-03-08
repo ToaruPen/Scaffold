@@ -1,3 +1,5 @@
+"""Detect file conflicts between a target repository and the Scaffold framework tree."""
+
 from __future__ import annotations
 
 import os
@@ -11,6 +13,8 @@ __all__ = [
 
 
 class ConflictResult(NamedTuple):
+    """Represent one detected conflict during migration checks."""
+
     path: str
     conflict_type: str
     description: str
@@ -28,6 +32,7 @@ _CONFIG_PREFIXES: tuple[str, ...] = ("config/",)
 
 
 def _collect_relative_paths(base: Path) -> set[str]:
+    """Collect all file paths under a directory as relative POSIX paths."""
     paths: set[str] = set()
     if not base.is_dir():
         return paths
@@ -39,14 +44,17 @@ def _collect_relative_paths(base: Path) -> set[str]:
 
 
 def _is_script_path(relative: str) -> bool:
+    """Return True when path is under a managed scripts directory."""
     return any(relative.startswith(p) for p in _SCRIPT_PREFIXES)
 
 
 def _is_config_path(relative: str) -> bool:
+    """Return True when path is under a managed config directory."""
     return any(relative.startswith(p) for p in _CONFIG_PREFIXES)
 
 
 def _classify_overlap(relative: str) -> tuple[str, str]:
+    """Classify an exact file overlap between target and framework."""
     if _is_script_path(relative):
         return (
             "script_collision",
@@ -64,6 +72,7 @@ def _classify_overlap(relative: str) -> tuple[str, str]:
 
 
 def _classify_managed_dir(relative: str) -> tuple[str, str] | None:
+    """Classify files that sit inside framework-managed directories."""
     if _is_script_path(relative):
         return (
             "script_collision",

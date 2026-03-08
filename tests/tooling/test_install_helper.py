@@ -1,3 +1,5 @@
+"""Tests for the Scaffold install helper CLI."""
+
 from __future__ import annotations
 
 import contextlib
@@ -16,6 +18,7 @@ SCRIPT_PATH = REPO_ROOT / "tooling/install/install_helper.py"
 
 
 def _load_script_module() -> ModuleType:
+    """Load and execute ``install_helper.py`` for test-time access."""
     spec = importlib.util.spec_from_file_location("install_helper_module", SCRIPT_PATH)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
@@ -25,6 +28,8 @@ def _load_script_module() -> ModuleType:
 
 
 class InstallHelperTests(unittest.TestCase):
+    """Test suite for install_helper CLI behavior."""
+
     script: ModuleType
 
     @classmethod
@@ -41,6 +46,7 @@ class InstallHelperTests(unittest.TestCase):
 
     @staticmethod
     def _make_clean_repo(path: Path) -> None:
+        """Create and configure a clean temporary git repository."""
         subprocess.run(["git", "init"], cwd=path, capture_output=True, check=True)
         subprocess.run(
             ["git", "config", "user.email", "test@test.com"],
@@ -56,6 +62,7 @@ class InstallHelperTests(unittest.TestCase):
         )
 
     def _argv(self, target: Path, *extra: str) -> list[str]:
+        """Build ``sys.argv`` values for install_helper invocations."""
         return [
             "install_helper.py",
             "--target-repo",
@@ -66,6 +73,7 @@ class InstallHelperTests(unittest.TestCase):
         ]
 
     def test_preflight_pass_clean_repo(self) -> None:
+        """Verify clean repository passes preflight checks."""
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             self._make_clean_repo(repo)
@@ -75,6 +83,7 @@ class InstallHelperTests(unittest.TestCase):
             self.assertEqual(err, "")
 
     def test_preflight_fail_not_git(self) -> None:
+        """Fail preflight check when target is not a git repository."""
         with tempfile.TemporaryDirectory() as tmp:
             rc, _out, err = self._run_main(self._argv(Path(tmp)))
             self.assertEqual(rc, 2)
@@ -82,6 +91,7 @@ class InstallHelperTests(unittest.TestCase):
             self.assertIn("is_git_repo", err)
 
     def test_preflight_fail_existing_scaffold(self) -> None:
+        """Fail preflight check when scaffold directories already exist."""
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             self._make_clean_repo(repo)
@@ -92,6 +102,7 @@ class InstallHelperTests(unittest.TestCase):
             self.assertIn("no_existing_scaffold", err)
 
     def test_preflight_fail_dirty_tree(self) -> None:
+        """Fail preflight check when working tree has uncommitted changes."""
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             self._make_clean_repo(repo)
@@ -102,6 +113,7 @@ class InstallHelperTests(unittest.TestCase):
             self.assertIn("clean_working_tree", err)
 
     def test_dry_run_shows_plan(self) -> None:
+        """Dry run prints installation plan and makes no changes."""
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             self._make_clean_repo(repo)
@@ -112,6 +124,7 @@ class InstallHelperTests(unittest.TestCase):
             self.assertFalse((repo / ".scaffold").exists())
 
     def test_no_flag_shows_safe_message(self) -> None:
+        """Without --execute, emit the safe-to-run message."""
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             self._make_clean_repo(repo)
@@ -120,6 +133,7 @@ class InstallHelperTests(unittest.TestCase):
             self.assertIn("To proceed, add --execute to run the installation.", out)
 
     def test_help_output(self) -> None:
+        """Requesting help prints usage and exits with code zero."""
         out, err = io.StringIO(), io.StringIO()
         with (
             patch.object(sys, "argv", ["install_helper.py", "--help"]),

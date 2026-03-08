@@ -35,13 +35,20 @@ def check_is_git_repo(target_path: Path) -> PrecheckResult:
             message=f"Target path does not exist or is not a directory: {resolved}",
         )
 
-    result = subprocess.run(
-        ["git", "rev-parse", "--is-inside-work-tree"],
-        capture_output=True,
-        text=True,
-        check=False,
-        cwd=resolved,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=resolved,
+        )
+    except FileNotFoundError:
+        return PrecheckResult(
+            check_name=check_name,
+            passed=False,
+            message="git executable not found on PATH",
+        )
 
     if result.returncode != 0:
         return PrecheckResult(
@@ -66,9 +73,9 @@ def check_no_existing_scaffold(target_path: Path) -> PrecheckResult:
     framework_dir = resolved / "framework"
 
     conflicts: list[str] = []
-    if scaffold_dir.is_dir():
+    if scaffold_dir.exists():
         conflicts.append(str(scaffold_dir))
-    if framework_dir.is_dir():
+    if framework_dir.exists():
         conflicts.append(str(framework_dir))
 
     if conflicts:
@@ -76,7 +83,7 @@ def check_no_existing_scaffold(target_path: Path) -> PrecheckResult:
         return PrecheckResult(
             check_name=check_name,
             passed=False,
-            message=f"Existing Scaffold directories found: {listing}",
+            message=f"Existing Scaffold paths found: {listing}",
         )
 
     return PrecheckResult(
@@ -98,13 +105,20 @@ def check_clean_working_tree(target_path: Path) -> PrecheckResult:
             message=f"Target path does not exist or is not a directory: {resolved}",
         )
 
-    result = subprocess.run(
-        ["git", "status", "--porcelain"],
-        capture_output=True,
-        text=True,
-        check=False,
-        cwd=resolved,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=resolved,
+        )
+    except FileNotFoundError:
+        return PrecheckResult(
+            check_name=check_name,
+            passed=False,
+            message="git executable not found on PATH",
+        )
 
     if result.returncode != 0:
         stderr = result.stderr.strip()

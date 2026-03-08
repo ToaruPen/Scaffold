@@ -12,7 +12,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from tooling.install.lib.preflight import PrecheckResult, run_all_checks
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from tooling.install.lib.preflight import PrecheckResult, run_all_checks  # noqa: E402, RUF100
 
 __all__: list[str] = []
 

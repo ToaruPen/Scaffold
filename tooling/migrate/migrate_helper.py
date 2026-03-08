@@ -7,9 +7,13 @@ import argparse
 import sys
 from pathlib import Path
 
-from tooling.migrate.lib.conflict_detector import detect_conflicts
-from tooling.migrate.lib.path_mapper import find_mappable_files
-from tooling.migrate.lib.report_formatter import format_report
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from tooling.migrate.lib.conflict_detector import detect_conflicts  # noqa: E402, RUF100
+from tooling.migrate.lib.path_mapper import find_mappable_files  # noqa: E402, RUF100
+from tooling.migrate.lib.report_formatter import format_report  # noqa: E402, RUF100
 
 
 def _parse_args() -> argparse.Namespace:
